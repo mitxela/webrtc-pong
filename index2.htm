@@ -1,0 +1,129 @@
+<!doctype html>
+<meta charset="utf-8">
+
+<div id=box1>
+<h3>Create or join a room?</h3>
+<button id="createBtn">BOB: Create</button><p>
+<button id="joinBtn1">ALICE: Join</button>
+</div>
+
+<form id=box2 style='display:none;'>
+Enter ID: <input id="conid">
+<button id="joinBtn2">Join</button>
+</form>
+
+<div id=box3 style='display:none'>
+Chat:
+<br>
+<pre id="chatlog" style="height:200px; overflow:auto; border:1px solid"></pre>
+<br>
+<form>
+<input type="text" id="messageTextBox" placeholder="Type your message here">
+<button id="sendMessageBtn">Send message</button>
+</form>
+</div>
+
+<script src=DC.js></script>
+<script>
+
+function chat(msg){
+  chatlog.innerHTML += msg + '<br>';
+  chatlog.scrollTop = chatlog.scrollHeight;
+}
+
+var chunkSize  = 30 * 1024; // must be a multiple of 3 for base64 appending
+var currentFile={}
+
+setup = {
+  onopen: function(){
+    chat('[ connected ]');
+    box1.style.display='none';
+    box2.style.display='none';
+    box3.style.display='block';
+  },
+  onclose: function(){
+    chat('[ disconnected ]')
+    sendMessageBtn.disabled=true
+  },
+  onmessage:function(e) {
+    var data = JSON.parse(e.data)
+    if (data.msg) chat(data.msg)
+    else if (data.file){
+      if (currentFile.name!=data.file.name) {
+        currentFile=data.file;
+        chat("Receiving "+data.file.name)
+      } else {
+        currentFile.chunk += data.file.chunk
+      }
+      if (data.file.last) {
+        let a= document.createElement('a')
+        a.href = "data:"+currentFile.type+";base64,"+currentFile.chunk;
+        a.download=currentFile.name
+        a.click()
+        currentFile={}
+      }
+    }
+  }
+}
+
+createBtn.onclick = function() {
+  box1.innerHTML = '<h3>ID: '+ DC.host( setup ) +'</h3>';
+}
+
+joinBtn1.onclick = function(){
+  box2.style.display='block'
+  box1.style.display='none'
+}
+joinBtn2.onclick = function(){
+  DC.join( parseInt(conid.value), setup );
+  box2.innerHTML='Connecting...'
+  return false
+}
+sendMessageBtn.onclick = function() {
+  if (messageTextBox.value=="") return;
+  let msg = DC.me+': '+messageTextBox.value;
+  DC.send({msg})
+  chat(msg)
+  messageTextBox.value = "";
+  return false
+}
+
+conid.value = "";
+
+
+chatlog.addEventListener('dragover',function(e){ e.stopPropagation(); e.preventDefault() },false)
+chatlog.addEventListener('drop',function(e){
+  e.stopPropagation();
+  e.preventDefault();
+
+  if (!DC.dc || DC.dc.readyState!="open") return
+
+  let file = e.dataTransfer.files[0];
+  chat("Sending "+file.name);
+
+  var offset     = 0;
+  var chunkReaderBlock = null;
+
+  var readEventHandler = function(e) {
+    if (e.target.error != null) return;
+
+    offset += e.target.result.length;
+    DC.send({file:{name:file.name, type:file.type, last:(offset >= file.size), chunk:btoa(e.target.result)}})
+
+    if (offset < file.size) chunkReaderBlock(offset, chunkSize, file);
+  }
+
+  chunkReaderBlock = function(_offset, length, _file) {
+    var r = new FileReader();
+    var blob = _file.slice(_offset, length + _offset);
+    r.onload = readEventHandler;
+    r.readAsBinaryString(blob);
+  }
+
+  chunkReaderBlock(offset, chunkSize, file);
+
+},false)
+
+
+
+</script>
