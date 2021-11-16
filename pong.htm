@@ -1,0 +1,197 @@
+<!doctype html>
+<meta charset="utf-8">
+
+<div id=box1>
+<h3>Create or join a room?</h3>
+<button id="createBtn">BOB: Create</button><p>
+<button id="joinBtn1">ALICE: Join</button>
+</div>
+
+<form id=box2 style='display:none;'>
+Enter ID: <input id="conid">
+<button id="joinBtn2">Join</button>
+</form>
+
+<div id=box3 style='display:block'>
+
+<br>
+<canvas style="border:1px solid" width=800 height=600></canvas>
+<br>
+
+</div>
+
+<script src=DC.js></script>
+<script>
+canvas=document.querySelector("canvas")
+ctx=canvas.getContext("2d")
+w=canvas.width;h=canvas.height
+
+host=false;
+bufferSize = 3;
+frameNumber = -bufferSize;
+frameLength = 1000/60 //60FPS target
+startTime=0
+nextFrame=0
+
+myInputs=[]
+yoInputs=[]
+
+paddleH=60
+leftY=h/2
+rightY=h/2
+
+// Animation frame FPS could be different at each end, so don't rely on it for any timing.
+draw=function(){
+  ctx.clearRect( 0,0,w,h)
+  ctx.fillRect( 10, leftY - paddleH/2, 20, paddleH)
+  ctx.fillRect( w-30, rightY - paddleH/2, 20, paddleH)
+
+  requestAnimationFrame(draw)
+}
+requestAnimationFrame(draw)
+
+
+
+
+
+pingStack=[]
+function send(o){
+  o.tSend=performance.now()
+  DC.send(o)
+}
+function avg(a){
+  return a.reduce((x,y)=>x+y)/a.length
+}
+
+setup = {
+  onopen: function(){
+    console.log('[ connected ]');
+    box1.style.display='none';
+    box2.style.display='none';
+    box3.style.display='block';
+
+    if (host) {
+      send({type:"SYN"})
+    }
+  },
+  onclose: function(){
+    console.log('[ disconnected ]')
+
+  },
+  onmessage:function(e) {
+    let recTime = performance.now()
+    var data = JSON.parse(e.data)
+    if (data.type) switch (data.type) {
+      case "SYN":
+        send({type:"SYNACK", t1:data.tSend, t2:recTime})
+        break;
+      case "SYNACK":
+        let t1=data.t1, t2=data.t2, t3=data.tSend, t4 = recTime;
+        let roundTrip = t4-t1 - (t3-t2);
+        pingStack.push(roundTrip)
+        if (pingStack.length < 10) send({type:"SYN"})
+        else {
+          console.log(pingStack)
+
+          pingStack.shift() // The first roundtrip is usually unrepresentative, throw away
+          send({type:"ACK"})
+          startTime = nextFrame = performance.now() + avg(pingStack)/2
+
+          // wait for half the roundtrip time before starting the first frame
+          setTimeout(processFrame, startTime - performance.now())
+        }
+        break;
+      case "ACK":
+        startTime = nextFrame = performance.now()
+        processFrame()
+        break;
+      case "input":
+        yoInputs.push(data.input)
+        // check/adjust timing here?
+        break;
+    }
+  }
+}
+
+keymap={38:0,40:0}
+document.onkeydown=function(e){keymap[e.keyCode]=1}
+document.onkeyup  =function(e){keymap[e.keyCode]=0}
+
+for (let i=0;i<bufferSize;i++) {
+  myInputs.push( { frame:frameNumber, dir:0 } )
+  yoInputs.push( { frame:frameNumber, dir:0 } )
+  frameNumber++
+}
+function processFrame(){
+
+  if (yoInputs.length<bufferSize) console.log(yoInputs.length)
+
+  // if yoInputs buffer empty, we need to explicitly delay
+  if (yoInputs.length==0) {
+    console.log("input buffer empty!!")
+    nextFrame += 1
+    setTimeout(processFrame,1)
+    return
+  }
+
+  // consume inputs from stack, recalculate game
+  let myInput = myInputs.shift()
+  let yoInput = yoInputs.shift()
+
+  if (myInput.frame != yoInput.frame) {console.log("SYNC ERROR AHHH", myInput,yoInput); return}
+
+  if (host) {leftY += myInput.dir * 3; rightY += yoInput.dir*3}
+  else      {leftY += yoInput.dir * 3; rightY += myInput.dir*3}
+
+  if (leftY >h-paddleH) leftY =h-paddleH;
+  if (rightY>h-paddleH) rightY=h-paddleH;
+  if (leftY < paddleH ) leftY =paddleH;
+  if (rightY< paddleH ) rightY=paddleH;
+
+  // calculate ball and stuff
+
+
+  // take input from keyboard and add to stack
+  myinput = { frame:frameNumber, dir:(keymap[40]-keymap[38]) }
+  myInputs.push( myinput )
+
+  // send inputs to other
+  send({type:"input", input:myinput})
+
+  frameNumber++
+  nextFrame += frameLength
+
+  if (DC.dc.readyState=="open")
+    setTimeout(processFrame, nextFrame - performance.now() )
+}
+
+
+
+
+
+
+
+createBtn.onclick = function() {
+  box1.innerHTML = '<h3>ID: '+ DC.host( setup ) +'</h3>';
+  host=true;
+}
+
+joinBtn1.onclick = function(){
+  box2.style.display='block'
+  box1.style.display='none'
+}
+joinBtn2.onclick = function(){
+  DC.join( parseInt(conid.value), setup );
+  box2.innerHTML='Connecting...'
+  return false
+}
+//DC.send({msg})
+
+conid.value = "";
+
+
+
+
+
+
+</script>
