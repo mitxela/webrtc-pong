@@ -15,25 +15,28 @@ Enter ID: <input id="conid">
 <div id=box3 style='display:block'>
 
 <br>
-<canvas style="border:1px solid" width=800 height=600></canvas>
+<canvas id=game style="border:1px solid" width=800 height=600></canvas>
 <br>
 
 
 <pre id=stats></pre>
+<canvas id=graph style="border:1px solid" width=800 height=300></canvas>
 </div>
 
 <script src=DC.js></script>
 <script>
-canvas=document.querySelector("canvas")
+canvas=document.getElementById("game")
 ctx=canvas.getContext("2d")
 w=canvas.width;h=canvas.height
+
+graph=document.getElementById("graph").getContext("2d")
 
 host=false;
 bufferSize = 3;
 frameNumber = -bufferSize;
 
 driftThreshold = 1 //ms
-driftTrimFactor = 0.25 //
+driftTrimFactor = 0.05 //
 
 frameLength = 1000/60 //60FPS target
 nextFrame=0
@@ -176,7 +179,7 @@ function processFrame(){
     let lead = -avg(leadStack)
     if (lead>driftThreshold) { //we are running fast
        //console.log("delaysync",Math.min(lead*driftTrimFactor, frameLength*0.5))
-       nextFrame += Math.min(lead*driftTrimFactor, frameLength*0.5)
+       nextFrame += lead*driftTrimFactor// Math.min(lead*driftTrimFactor, frameLength*0.5)
     }
   }
 
@@ -203,17 +206,6 @@ function processPlayer(p, input){
   if (p.Y <   paddleH) p.Y = paddleH;
 }
 
-
-function doStats(){
-  let p="";
-  if (pingStack.length) p+="ping: " +avg(pingStack).toFixed(3)+ "ms\n"
-  if (leadStack.length) p+="lead:"+ avg(leadStack).toFixed(3)+"ms\n"
-  p+= "buffer: "+"\u25ae".repeat(yoInputs.length) 
-  if (yoInputs.length<bufferSize) p+="\u25af".repeat(bufferSize-yoInputs.length)
-  document.getElementById("stats").innerHTML = p
-}
-
-
 createBtn.onclick = function() {
   box1.innerHTML = '<h3>ID: '+ DC.host( setup ) +'</h3>';
   host=true;
@@ -234,6 +226,37 @@ conid.value = "";
 
 
 
+
+
+needle=0
+lastping=0
+lastlead=0
+function gline(y1,y2){
+  graph.beginPath()
+  graph.moveTo(needle-1,y1)
+  graph.lineTo(needle,y2)
+  graph.stroke()
+}
+function doStats(){
+  let lead = leadStack.length? avg(leadStack) : 0;
+  let ping = pingStack.length? avg(pingStack) : 0;
+
+  graph.clearRect(needle,0,3,300)
+  gline(lastlead*10+100, lead*10+100)
+  lastlead=lead
+
+  gline(lastping*5+200, ping*5+200)
+  lastping=ping
+
+  if (++needle>=800) needle=0
+
+
+  let p="ping: " +ping.toFixed(3) + "ms\n"
+       +"lead: " +lead.toFixed(3) + "ms\n"
+       +"buffer: "+"\u25ae".repeat(yoInputs.length);
+  if (yoInputs.length<bufferSize) p+="\u25af".repeat(bufferSize-yoInputs.length)
+  document.getElementById("stats").innerHTML = p
+}
 
 
 
