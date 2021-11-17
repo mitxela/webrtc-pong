@@ -29,14 +29,13 @@ ctx=canvas.getContext("2d")
 w=canvas.width;h=canvas.height
 
 host=false;
-bufferSize = 5;
+bufferSize = 3;
 frameNumber = -bufferSize;
 
 driftThreshold = 1 //ms
 driftTrimFactor = 0.25 //
 
 frameLength = 1000/60 //60FPS target
-startTime=0
 nextFrame=0
 
 myInputs=[]
@@ -52,6 +51,7 @@ draw=function(){
   ctx.fillRect( 10, left.Y - paddleH/2, 20, paddleH)
   ctx.fillRect( w-30, right.Y - paddleH/2, 20, paddleH)
 
+  doStats()
   requestAnimationFrame(draw)
 }
 requestAnimationFrame(draw)
@@ -97,7 +97,6 @@ setup = {
       ping = t4-t1 - (t3-t2);
       pingStack.push(ping)
       if (pingStack.length>stacksize) pingStack.shift()
-      doStats()
     }
 
     if (data.type) switch (data.type) {
@@ -108,32 +107,28 @@ setup = {
         // repeatedly send start condition to establish average ping time
         if (pingStack.length < stacksize) send({type:"SYN"})
         else {
-          console.log(pingStack)
-
           pingStack.shift() // The first is usually unrepresentative, throw away
           send({type:"ACK"})
 
           // wait for half the roundtrip time before starting the first frame
-          startTime = nextFrame = performance.now() + avg(pingStack)/2
-          setTimeout(processFrame, startTime - performance.now())
+          nextFrame = performance.now() + avg(pingStack)/2
+          setTimeout(processFrame, nextFrame - performance.now())
         }
         break;
       case "ACK":
-        startTime = nextFrame = performance.now()
+        nextFrame = performance.now()
         processFrame()
         break;
       case "input":
         yoInputs.push(data.input)
-        // check/adjust timing here?
 
+        // check/adjust timing
         //input packet contains estimate until next frame
-
         let otherNextFrame = recTime -ping/2 + data.delay
         let frameDifference = (frameNumber-1 -data.input.frame)*frameLength
         let leadTime = nextFrame - otherNextFrame - frameDifference;
         leadStack.push(leadTime)
         if (leadStack.length>stacksize) leadStack.shift()
-        //console.log("lead: ", leadTime, avg(leadStack))
 
         break;
     }
@@ -150,8 +145,6 @@ for (let i=0;i<bufferSize;i++) {
   frameNumber++
 }
 function processFrame(){
-
-  if (yoInputs.length<bufferSize) console.log(yoInputs.length)
 
   // if yoInputs buffer empty, we need to explicitly delay
   if (yoInputs.length==0) {
@@ -180,25 +173,25 @@ function processFrame(){
 
   // timing drift correction - should this be before or after transmitting?
   if (leadStack.length==stacksize) {
-    let lead = avg(leadStack)
-    if (lead<-driftThreshold) { //we are running fast
-       nextFrame -= Math.min(lead*driftTrimFactor, frameLength*0.5)
+    let lead = -avg(leadStack)
+    if (lead>driftThreshold) { //we are running fast
+       //console.log("delaysync",Math.min(lead*driftTrimFactor, frameLength*0.5))
+       nextFrame += Math.min(lead*driftTrimFactor, frameLength*0.5)
     }
   }
 
-
-
   frameNumber++
   nextFrame += frameLength
-  let delay = nextFrame - performance.now()
 
+  let now = performance.now()
+  if (nextFrame<now) {
+    console.log('timing disrupted')
+    nextFrame=now
+  }
+  let delay = nextFrame - now
 
   // send inputs to other
   send({type:"input", input:myinput, delay})
-
-
-
-
 
 
   if (DC.dc.readyState=="open") setTimeout(processFrame, delay )
@@ -212,8 +205,11 @@ function processPlayer(p, input){
 
 
 function doStats(){
-  let p="ping: " +avg(pingStack).toFixed(3)+ "ms\n"
-  if (leadStack.length==stacksize) p+="lead:"+ avg(leadStack).toFixed(3)+"ms"
+  let p="";
+  if (pingStack.length) p+="ping: " +avg(pingStack).toFixed(3)+ "ms\n"
+  if (leadStack.length) p+="lead:"+ avg(leadStack).toFixed(3)+"ms\n"
+  p+= "buffer: "+"\u25ae".repeat(yoInputs.length) 
+  if (yoInputs.length<bufferSize) p+="\u25af".repeat(bufferSize-yoInputs.length)
   document.getElementById("stats").innerHTML = p
 }
 
