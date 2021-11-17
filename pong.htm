@@ -18,6 +18,8 @@ Enter ID: <input id="conid">
 <canvas style="border:1px solid" width=800 height=600></canvas>
 <br>
 
+
+<pre id=stats></pre>
 </div>
 
 <script src=DC.js></script>
@@ -27,8 +29,12 @@ ctx=canvas.getContext("2d")
 w=canvas.width;h=canvas.height
 
 host=false;
-bufferSize = 3;
+bufferSize = 5;
 frameNumber = -bufferSize;
+
+driftThreshold = 1 //ms
+driftTrimFactor = 0.25 //
+
 frameLength = 1000/60 //60FPS target
 startTime=0
 nextFrame=0
@@ -37,14 +43,14 @@ myInputs=[]
 yoInputs=[]
 
 paddleH=60
-leftY=h/2
-rightY=h/2
+left={Y:h/2}
+right={Y:h/2}
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(){
   ctx.clearRect( 0,0,w,h)
-  ctx.fillRect( 10, leftY - paddleH/2, 20, paddleH)
-  ctx.fillRect( w-30, rightY - paddleH/2, 20, paddleH)
+  ctx.fillRect( 10, left.Y - paddleH/2, 20, paddleH)
+  ctx.fillRect( w-30, right.Y - paddleH/2, 20, paddleH)
 
   requestAnimationFrame(draw)
 }
@@ -52,10 +58,13 @@ requestAnimationFrame(draw)
 
 
 
-
-
+timePair={t1:null,t2:null} // of last received packet
+stacksize=10
 pingStack=[]
+leadStack=[]
 function send(o){
+  o.t1 = timePair.t1
+  o.t2 = timePair.t2
   o.tSend=performance.now()
   DC.send(o)
 }
@@ -79,25 +88,33 @@ setup = {
 
   },
   onmessage:function(e) {
-    let recTime = performance.now()
+    let ping, recTime = performance.now()
     var data = JSON.parse(e.data)
+    timePair = {t1:data.tSend, t2:recTime}
+
+    if (data.t1) {
+      let t1=data.t1, t2=data.t2, t3=data.tSend, t4 = recTime;
+      ping = t4-t1 - (t3-t2);
+      pingStack.push(ping)
+      if (pingStack.length>stacksize) pingStack.shift()
+      doStats()
+    }
+
     if (data.type) switch (data.type) {
       case "SYN":
-        send({type:"SYNACK", t1:data.tSend, t2:recTime})
+        send({type:"SYNACK"})
         break;
       case "SYNACK":
-        let t1=data.t1, t2=data.t2, t3=data.tSend, t4 = recTime;
-        let roundTrip = t4-t1 - (t3-t2);
-        pingStack.push(roundTrip)
-        if (pingStack.length < 10) send({type:"SYN"})
+        // repeatedly send start condition to establish average ping time
+        if (pingStack.length < stacksize) send({type:"SYN"})
         else {
           console.log(pingStack)
 
-          pingStack.shift() // The first roundtrip is usually unrepresentative, throw away
+          pingStack.shift() // The first is usually unrepresentative, throw away
           send({type:"ACK"})
-          startTime = nextFrame = performance.now() + avg(pingStack)/2
 
           // wait for half the roundtrip time before starting the first frame
+          startTime = nextFrame = performance.now() + avg(pingStack)/2
           setTimeout(processFrame, startTime - performance.now())
         }
         break;
@@ -108,6 +125,16 @@ setup = {
       case "input":
         yoInputs.push(data.input)
         // check/adjust timing here?
+
+        //input packet contains estimate until next frame
+
+        let otherNextFrame = recTime -ping/2 + data.delay
+        let frameDifference = (frameNumber-1 -data.input.frame)*frameLength
+        let leadTime = nextFrame - otherNextFrame - frameDifference;
+        leadStack.push(leadTime)
+        if (leadStack.length>stacksize) leadStack.shift()
+        //console.log("lead: ", leadTime, avg(leadStack))
+
         break;
     }
   }
@@ -130,7 +157,7 @@ function processFrame(){
   if (yoInputs.length==0) {
     console.log("input buffer empty!!")
     nextFrame += 1
-    setTimeout(processFrame,1)
+    if (DC.dc.readyState=="open") setTimeout(processFrame,1)
     return
   }
 
@@ -140,13 +167,8 @@ function processFrame(){
 
   if (myInput.frame != yoInput.frame) {console.log("SYNC ERROR AHHH", myInput,yoInput); return}
 
-  if (host) {leftY += myInput.dir * 3; rightY += yoInput.dir*3}
-  else      {leftY += yoInput.dir * 3; rightY += myInput.dir*3}
-
-  if (leftY >h-paddleH) leftY =h-paddleH;
-  if (rightY>h-paddleH) rightY=h-paddleH;
-  if (leftY < paddleH ) leftY =paddleH;
-  if (rightY< paddleH ) rightY=paddleH;
+  if (host) { processPlayer(left, myInput); processPlayer(right, yoInput); }
+  else      { processPlayer(left, yoInput); processPlayer(right, myInput); }
 
   // calculate ball and stuff
 
@@ -155,20 +177,45 @@ function processFrame(){
   myinput = { frame:frameNumber, dir:(keymap[40]-keymap[38]) }
   myInputs.push( myinput )
 
-  // send inputs to other
-  send({type:"input", input:myinput})
+
+  // timing drift correction - should this be before or after transmitting?
+  if (leadStack.length==stacksize) {
+    let lead = avg(leadStack)
+    if (lead<-driftThreshold) { //we are running fast
+       nextFrame -= Math.min(lead*driftTrimFactor, frameLength*0.5)
+    }
+  }
+
+
 
   frameNumber++
   nextFrame += frameLength
+  let delay = nextFrame - performance.now()
 
-  if (DC.dc.readyState=="open")
-    setTimeout(processFrame, nextFrame - performance.now() )
+
+  // send inputs to other
+  send({type:"input", input:myinput, delay})
+
+
+
+
+
+
+  if (DC.dc.readyState=="open") setTimeout(processFrame, delay )
+}
+
+function processPlayer(p, input){
+  p.Y += input.dir * 3;
+  if (p.Y > h-paddleH) p.Y = h-paddleH;
+  if (p.Y <   paddleH) p.Y = paddleH;
 }
 
 
-
-
-
+function doStats(){
+  let p="ping: " +avg(pingStack).toFixed(3)+ "ms\n"
+  if (leadStack.length==stacksize) p+="lead:"+ avg(leadStack).toFixed(3)+"ms"
+  document.getElementById("stats").innerHTML = p
+}
 
 
 createBtn.onclick = function() {
