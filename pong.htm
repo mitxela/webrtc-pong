@@ -32,11 +32,12 @@ w=canvas.width;h=canvas.height
 graph=document.getElementById("graph").getContext("2d")
 
 host=false;
+connected=false;
 bufferSize = 3;
 frameNumber = -bufferSize;
 
 driftThreshold = 1 //ms
-driftTrimFactor = 0.05 //
+driftTrimFactor = 0.1 //
 
 frameLength = 1000/60 //60FPS target
 nextFrame=0
@@ -55,14 +56,14 @@ draw=function(){
   ctx.fillRect( w-30, right.Y - paddleH/2, 20, paddleH)
 
   doStats()
-  requestAnimationFrame(draw)
+  if (connected) requestAnimationFrame(draw)
 }
-requestAnimationFrame(draw)
+
 
 
 
 timePair={t1:null,t2:null} // of last received packet
-stacksize=10
+stacksize=5
 pingStack=[]
 leadStack=[]
 function send(o){
@@ -78,6 +79,8 @@ function avg(a){
 setup = {
   onopen: function(){
     console.log('[ connected ]');
+    connected=true;
+    requestAnimationFrame(draw)
     box1.style.display='none';
     box2.style.display='none';
     box3.style.display='block';
@@ -87,6 +90,7 @@ setup = {
     }
   },
   onclose: function(){
+    connected=false;
     console.log('[ disconnected ]')
 
   },
@@ -153,7 +157,7 @@ function processFrame(){
   if (yoInputs.length==0) {
     console.log("input buffer empty!!")
     nextFrame += 1
-    if (DC.dc.readyState=="open") setTimeout(processFrame,1)
+    if (connected) setTimeout(processFrame,1)
     return
   }
 
@@ -197,7 +201,7 @@ function processFrame(){
   send({type:"input", input:myinput, delay})
 
 
-  if (DC.dc.readyState=="open") setTimeout(processFrame, delay )
+  if (connected) setTimeout(processFrame, delay )
 }
 
 function processPlayer(p, input){
@@ -226,27 +230,37 @@ conid.value = "";
 
 
 
-
+function newGraph(pos, scale, col){
+  var lastY=0;
+  return function( y ){
+    graph.strokeStyle=col
+    graph.beginPath()
+    graph.moveTo(needle-1,lastY +pos)
+    graph.lineTo(needle,y +pos)
+    graph.stroke()
+    lastY=y
+  }
+}
 
 needle=0
-lastping=0
-lastlead=0
-function gline(y1,y2){
-  graph.beginPath()
-  graph.moveTo(needle-1,y1)
-  graph.lineTo(needle,y2)
-  graph.stroke()
-}
+plotLead = newGraph(100,10,"green")
+plotPing = newGraph(200,3, "red")
 function doStats(){
   let lead = leadStack.length? avg(leadStack) : 0;
   let ping = pingStack.length? avg(pingStack) : 0;
 
   graph.clearRect(needle,0,3,300)
-  gline(lastlead*10+100, lead*10+100)
-  lastlead=lead
 
-  gline(lastping*5+200, ping*5+200)
-  lastping=ping
+  graph.strokeStyle="#888"
+  graph.beginPath()
+  graph.moveTo(needle-1,100)
+  graph.lineTo(needle,100)
+  graph.moveTo(needle-1,200)
+  graph.lineTo(needle,200)
+  graph.stroke()
+
+  plotPing(-ping)
+  plotLead(lead)
 
   if (++needle>=800) needle=0
 
