@@ -55,17 +55,38 @@ left={Y:h/2}
 right={Y:h/2}
 grabY = 0; //mouse input
 
+ball={x:0,y:0,hspeed:0,vspeed:0}
+
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(){
   ctx.clearRect( 0,0,w,h)
   ctx.fillRect( 10, left.Y - paddleH/2, 20, paddleH)
   ctx.fillRect( w-30, right.Y - paddleH/2, 20, paddleH)
+  ctx.fillRect( ball.x-10,ball.y-10, 20, 20 )
 
   doStats()
   if (connected) requestAnimationFrame(draw)
 }
 
+seed= Math.floor(Math.random()*0xFFFFFFFF);
+function rng() {
+  var t = seed += 0x6D2B79F5;
+  t = Math.imul(t ^ t >>> 15, t | 1);
+  t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
 
+function resetBall(){
+  // choose a random angle in a 90deg cone facing one of the players
+  let angle, pi=Math.PI;
+  angle= rng()*pi/2-pi/4;
+  if (rng()>0.5) angle+=pi;
+
+  ball.x=w/2
+  ball.y=h/2
+  ball.hspeed = Math.cos(angle)*2
+  ball.vspeed = Math.sin(angle)*2
+}
 
 
 timePair={t1:null,t2:null} // of last received packet
@@ -120,7 +141,7 @@ setup = {
         if (pingStack.length < stacksize) send({type:"SYN"})
         else {
           pingStack.shift() // The first is usually unrepresentative, throw away
-          send({type:"ACK", RNG:seed})
+          send({type:"ACK", seed})
 
           // wait for half the roundtrip time before starting the first frame
           nextFrame = performance.now() + avg(pingStack)/2
@@ -128,6 +149,7 @@ setup = {
         }
         break;
       case "ACK":
+        seed=data.seed
         nextFrame = performance.now()
         processFrame()
         break;
@@ -177,6 +199,19 @@ function processFrame(){
 
   // calculate ball and stuff
 
+  if (frameNumber==0) resetBall();
+
+  ball.x += ball.hspeed;
+  ball.y += ball.vspeed;
+  if (ball.y>h-10 || ball.y<10) ball.vspeed =-ball.vspeed;
+  if (ball.x < 40) {
+    if (ball.y+10 < left.Y-paddleH/2 || ball.y-10>left.Y+paddleH/2) resetBall()
+    else ball.hspeed = -ball.hspeed;
+  }
+  if (ball.x > w-40) {
+    if (ball.y+10 < right.Y-paddleH/2 || ball.y-10>right.Y+paddleH/2) resetBall()
+    else ball.hspeed = -ball.hspeed;
+  }
 
   // take input from keyboard and add to stack
   myinput = { frame:frameNumber, dir:grabY }
