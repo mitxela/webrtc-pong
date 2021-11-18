@@ -36,7 +36,7 @@ const DC={id:null, dc:null, me:null, you:null};
 
     pc.onicecandidate = function(e) {
       if (e.candidate != null) {
-        post("id="+DC.id+"&to="+DC.you+"&msg="+encodeURI(JSON.stringify({"ice":e.candidate})), gotmsgs);
+        post("id="+DC.id+"&to="+DC.you+"&msg="+encodeURIComponent(JSON.stringify({"ice":e.candidate})), gotmsgs);
       }
     }
     pc.onicegatheringstatechange = function(e){
@@ -71,7 +71,7 @@ const DC={id:null, dc:null, me:null, you:null};
 
   function createdDesc(desc){
     pc.setLocalDescription(desc).then(function(){
-      post("to="+DC.you+"&id="+DC.id+"&msg="+encodeURI(JSON.stringify({"sdp":pc.localDescription})),gotmsgs)
+      post("to="+DC.you+"&id="+DC.id+"&msg="+encodeURIComponent(JSON.stringify({"sdp":pc.localDescription})),gotmsgs)
     }).catch(eHandler);
   }
 
