@@ -51,18 +51,20 @@ myInputs=[]
 yoInputs=[]
 
 paddleH=60
-left={Y:h/2}
-right={Y:h/2}
+paddleW=20
+ballSize=20
+left ={y:h/2,x:20}
+right={y:h/2,x:w-20}
 grabY = 0; //mouse input
 
-ball={x:0,y:0,hspeed:0,vspeed:0}
+ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(){
   ctx.clearRect( 0,0,w,h)
-  ctx.fillRect( 10, left.Y - paddleH/2, 20, paddleH)
-  ctx.fillRect( w-30, right.Y - paddleH/2, 20, paddleH)
-  ctx.fillRect( ball.x-10,ball.y-10, 20, 20 )
+  ctx.fillRect( left.x - paddleW/2, left.y - paddleH/2, paddleW, paddleH)
+  ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
+  ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
 
   doStats()
   if (connected) requestAnimationFrame(draw)
@@ -84,8 +86,9 @@ function resetBall(){
 
   ball.x=w/2
   ball.y=h/2
-  ball.hspeed = Math.cos(angle)*2
-  ball.vspeed = Math.sin(angle)*2
+  ball.speed=2
+  ball.hspeed = Math.cos(angle)*ball.speed
+  ball.vspeed = Math.sin(angle)*ball.speed
 }
 
 
@@ -182,7 +185,7 @@ function processFrame(){
 
   // if yoInputs buffer empty, we need to explicitly delay
   if (yoInputs.length==0) {
-    console.log("input buffer empty!!")
+    //console.log("input buffer empty!!")
     nextFrame += 1
     if (connected) setTimeout(processFrame,1)
     return
@@ -194,6 +197,8 @@ function processFrame(){
 
   if (myInput.frame != yoInput.frame) {console.log("SYNC ERROR AHHH", myInput,yoInput); return}
 
+  let oldlefty=left.y, oldrighty=right.y
+
   if (host) { processPlayer(left, myInput); processPlayer(right, yoInput); }
   else      { processPlayer(left, yoInput); processPlayer(right, myInput); }
 
@@ -201,17 +206,44 @@ function processFrame(){
 
   if (frameNumber==0) resetBall();
 
-  ball.x += ball.hspeed;
-  ball.y += ball.vspeed;
-  if (ball.y>h-10 || ball.y<10) ball.vspeed =-ball.vspeed;
-  if (ball.x < 40) {
-    if (ball.y+10 < left.Y-paddleH/2 || ball.y-10>left.Y+paddleH/2) resetBall()
-    else ball.hspeed = -ball.hspeed;
+  let impulses = Math.ceil(ball.speed), step=1/impulses;
+  for (let i=0;i<impulses;i++) {
+
+    ball.x += ball.hspeed*step;
+    ball.y += ball.vspeed*step;
+
+    // bounce off top and bottom
+    if (ball.y>h-10 || ball.y<10) ball.vspeed =-ball.vspeed;
+
+    // check for face collision with paddle
+    if (Math.round(ball.x-ballSize/2) == Math.round(left.x+paddleW/2-1) && vcollision(left)) {
+      //reflect based on position
+      ball.speed++
+      let angle = Math.atan2(ball.y-left.y, 15)
+      ball.hspeed = Math.cos(angle)*ball.speed
+      ball.vspeed = Math.sin(angle)*ball.speed
+      ball.x++
+    }
+    else if (Math.round(ball.x+ballSize/2) == Math.round(right.x-paddleW/2+1) && vcollision(right)) {
+      ball.speed++
+      let angle = Math.atan2(ball.y-right.y, -15)
+      ball.hspeed = Math.cos(angle)*ball.speed
+      ball.vspeed = Math.sin(angle)*ball.speed
+      ball.x--
+    }
+    else if (ball.x+ballSize/2 < left.x+paddleW/2-1 && vcollision(left)) {
+      ball.vspeed = -ball.vspeed
+      if (ball.y<oldlefty) ball.y=left.y-paddleH/2-ballSize/2;
+      else ball.y=left.y+paddleH/2+ballSize/2;
+    }
+    else if (ball.x+ballSize/2 > right.x+paddleW/2-1 && vcollision(right)) {
+      ball.vspeed = -ball.vspeed
+      if (ball.y<oldrighty) ball.y=right.y-paddleH/2-ballSize/2;
+      else ball.y=right.y+paddleH/2+ballSize/2;
+    }
   }
-  if (ball.x > w-40) {
-    if (ball.y+10 < right.Y-paddleH/2 || ball.y-10>right.Y+paddleH/2) resetBall()
-    else ball.hspeed = -ball.hspeed;
-  }
+
+  if (ball.x<-ballSize || ball.x>w+ballSize) resetBall()
 
   // take input from keyboard and add to stack
   myinput = { frame:frameNumber, dir:grabY }
@@ -232,7 +264,7 @@ function processFrame(){
 
   let now = performance.now()
   if (nextFrame<now) {
-    console.log('timing disrupted')
+    //console.log('timing disrupted')
     nextFrame=now
   }
   let delay = nextFrame - now
@@ -245,9 +277,13 @@ function processFrame(){
 }
 
 function processPlayer(p, input){
-  p.Y += input.dir;
-  if (p.Y > h-paddleH) p.Y = h-paddleH;
-  if (p.Y <   paddleH) p.Y = paddleH;
+  p.y += input.dir;
+  if (p.y > h-paddleH) p.y = h-paddleH;
+  if (p.y <   paddleH) p.y = paddleH;
+}
+
+function vcollision(p){
+  return (ball.y-ballSize/2 < p.y+paddleH/2 && ball.y+ballSize/2 > p.y-paddleH/2)
 }
 
 createBtn.onclick = function() {
