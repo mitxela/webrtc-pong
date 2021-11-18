@@ -19,8 +19,11 @@ Enter ID: <input id="conid">
 <br>
 
 
-<pre id=stats></pre>
-<canvas id=graph style="border:1px solid" width=800 height=400></canvas>
+<div style="position:relative">
+<canvas id=ggrid style="border:1px solid;position:absolute" width=800 height=400></canvas>
+<canvas id=graph style="border:1px solid;position:absolute" width=800 height=400></canvas>
+</div>
+<pre id=stats style="display:inline-block;padding:10px"></pre>
 </div>
 
 <script src=DC.js></script>
@@ -30,6 +33,7 @@ ctx=canvas.getContext("2d")
 w=canvas.width;h=canvas.height
 
 graph=document.getElementById("graph").getContext("2d")
+ggrid=document.getElementById("ggrid").getContext("2d")
 
 host=false;
 connected=false;
@@ -116,7 +120,7 @@ setup = {
         if (pingStack.length < stacksize) send({type:"SYN"})
         else {
           pingStack.shift() // The first is usually unrepresentative, throw away
-          send({type:"ACK"})
+          send({type:"ACK", RNG:seed})
 
           // wait for half the roundtrip time before starting the first frame
           nextFrame = performance.now() + avg(pingStack)/2
@@ -247,48 +251,71 @@ canvas.onmousedown=function(e){
 }
 
 
+ggrid.strokeStyle="rgba(0,0,0,0.2)"
+function drawgrid(x,y,w,h,xspace,yspace){
+  ggrid.beginPath()
+  for (let i=x;i<=x+w;i+=xspace) {
+    ggrid.moveTo(i,y)
+    ggrid.lineTo(i,y+h)
+  }
+  for (let j=y;j<=y+h;j+=yspace) {
+    ggrid.moveTo(x,  j)
+    ggrid.lineTo(x+w,j)
+  }
+  ggrid.stroke()
+}
 
+drawgrid(50,10,700,180,10,10)
+drawgrid(50,220,700,50,10,10)
+drawgrid(50,290,700,100,10,10)
 
+ggrid.textAlign="right"
+ggrid.fillStyle="green";
+ggrid.fillText("lag /",45,102)
+ggrid.fillText("lead",45,112)
+ggrid.fillText("(ms)",45,122)
+ggrid.fillStyle="blue";
+ggrid.fillText("buffer",45,272)
+ggrid.fillStyle="red";
+ggrid.fillText("ping",45,382)
+ggrid.fillText("(ms)",45,392)
+
+ggrid.beginPath()
+ggrid.moveTo(50,100)
+ggrid.lineTo(750,  100)
+ggrid.moveTo(50,270)
+ggrid.lineTo(750,  270)
+ggrid.moveTo(50,390)
+ggrid.lineTo(750,  390)
+ggrid.stroke()
 
 function newGraph(pos, col){
   var lastY=0;
   return function( y ){
     graph.strokeStyle=col
     graph.beginPath()
-    graph.moveTo(needle-1,lastY +pos)
-    graph.lineTo(needle,y +pos)
+    graph.moveTo(needle,lastY +pos)
+    graph.lineTo(needle+1,y +pos)
     graph.stroke()
     lastY=y
   }
 }
 
-needle=0
+needle=50
 plotLead = newGraph(100,"green")
-plotBuff = newGraph(200,"blue")
-plotPing = newGraph(380, "red")
+plotBuff = newGraph(270,"blue")
+plotPing = newGraph(390, "red")
 function doStats(){
   let lead = leadStack.length? avg(leadStack) : 0;
   let ping = pingStack.length? avg(pingStack) : 0;
 
-  graph.clearRect(needle,0,3,400)
-
-  graph.strokeStyle="#888"
-  graph.beginPath()
-  graph.moveTo(needle-1,100)
-  graph.lineTo(needle,  100)
-  graph.moveTo(needle-1,200)
-  graph.lineTo(needle,  200)
-  graph.moveTo(needle-1,200-bufferSize*5)
-  graph.lineTo(needle,  200-bufferSize*5)
-  graph.moveTo(needle-1,380)
-  graph.lineTo(needle,  380)
-  graph.stroke()
+  graph.clearRect(needle,0,4,400)
 
   plotPing(-ping)
   plotBuff(-yoInputs.length*5)
   plotLead(lead)
 
-  if (++needle>=800) needle=0
+  if (++needle>=750) needle=50
 
 
   let p="ping: " +ping.toFixed(3) + "ms\n"
