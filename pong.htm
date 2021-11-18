@@ -20,7 +20,7 @@ Enter ID: <input id="conid">
 
 
 <pre id=stats></pre>
-<canvas id=graph style="border:1px solid" width=800 height=300></canvas>
+<canvas id=graph style="border:1px solid" width=800 height=400></canvas>
 </div>
 
 <script src=DC.js></script>
@@ -38,6 +38,7 @@ frameNumber = -bufferSize;
 
 driftThreshold = 1 //ms
 driftTrimFactor = 0.1 //
+stacksize=5 // averaging period for ping/lead times
 
 frameLength = 1000/60 //60FPS target
 nextFrame=0
@@ -48,6 +49,7 @@ yoInputs=[]
 paddleH=60
 left={Y:h/2}
 right={Y:h/2}
+grabY = 0; //mouse input
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(){
@@ -63,7 +65,6 @@ draw=function(){
 
 
 timePair={t1:null,t2:null} // of last received packet
-stacksize=5
 pingStack=[]
 leadStack=[]
 function send(o){
@@ -174,7 +175,8 @@ function processFrame(){
 
 
   // take input from keyboard and add to stack
-  myinput = { frame:frameNumber, dir:(keymap[40]-keymap[38]) }
+  myinput = { frame:frameNumber, dir:grabY }
+  grabY = 0;
   myInputs.push( myinput )
 
 
@@ -182,8 +184,7 @@ function processFrame(){
   if (leadStack.length==stacksize) {
     let lead = -avg(leadStack)
     if (lead>driftThreshold) { //we are running fast
-       //console.log("delaysync",Math.min(lead*driftTrimFactor, frameLength*0.5))
-       nextFrame += lead*driftTrimFactor// Math.min(lead*driftTrimFactor, frameLength*0.5)
+       nextFrame += Math.min(lead*driftTrimFactor, frameLength)
     }
   }
 
@@ -205,7 +206,7 @@ function processFrame(){
 }
 
 function processPlayer(p, input){
-  p.Y += input.dir * 3;
+  p.Y += input.dir;
   if (p.Y > h-paddleH) p.Y = h-paddleH;
   if (p.Y <   paddleH) p.Y = paddleH;
 }
@@ -218,19 +219,38 @@ createBtn.onclick = function() {
 joinBtn1.onclick = function(){
   box2.style.display='block'
   box1.style.display='none'
+  conid.focus()
 }
 joinBtn2.onclick = function(){
   DC.join( parseInt(conid.value), setup );
   box2.innerHTML='Connecting...'
   return false
 }
-//DC.send({msg})
 
 conid.value = "";
 
 
 
-function newGraph(pos, scale, col){
+canvas.onmousedown=function(e){
+  let sy = e.pageY
+  e.preventDefault()
+  e.stopPropagation()
+
+  document.onmousemove=function(e){
+    grabY += e.pageY - sy
+    sy = e.pageY
+  }
+  document.onmouseup=function(e){
+    document.onmouseup=null;
+    document.onmousemove=null;
+  }
+}
+
+
+
+
+
+function newGraph(pos, col){
   var lastY=0;
   return function( y ){
     graph.strokeStyle=col
@@ -243,23 +263,29 @@ function newGraph(pos, scale, col){
 }
 
 needle=0
-plotLead = newGraph(100,10,"green")
-plotPing = newGraph(200,3, "red")
+plotLead = newGraph(100,"green")
+plotBuff = newGraph(200,"blue")
+plotPing = newGraph(380, "red")
 function doStats(){
   let lead = leadStack.length? avg(leadStack) : 0;
   let ping = pingStack.length? avg(pingStack) : 0;
 
-  graph.clearRect(needle,0,3,300)
+  graph.clearRect(needle,0,3,400)
 
   graph.strokeStyle="#888"
   graph.beginPath()
   graph.moveTo(needle-1,100)
-  graph.lineTo(needle,100)
+  graph.lineTo(needle,  100)
   graph.moveTo(needle-1,200)
-  graph.lineTo(needle,200)
+  graph.lineTo(needle,  200)
+  graph.moveTo(needle-1,200-bufferSize*5)
+  graph.lineTo(needle,  200-bufferSize*5)
+  graph.moveTo(needle-1,380)
+  graph.lineTo(needle,  380)
   graph.stroke()
 
   plotPing(-ping)
+  plotBuff(-yoInputs.length*5)
   plotLead(lead)
 
   if (++needle>=800) needle=0
