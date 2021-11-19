@@ -14,16 +14,13 @@ Enter ID: <input id="conid">
 
 <div id=box3 style='display:block'>
 
-<br>
-<canvas id=game style="border:1px solid" width=800 height=600></canvas>
-<br>
-
-
 <div style="position:relative">
-<canvas id=ggrid style="border:1px solid;position:absolute" width=800 height=400></canvas>
-<canvas id=graph style="border:1px solid;position:absolute" width=800 height=400></canvas>
+<canvas id=ggrid style="position:absolute;" width=800 height=600></canvas>
+<canvas id=graph style="position:absolute;" width=800 height=600></canvas>
+<canvas id=game style="border:1px solid;position:absolute" width=800 height=600></canvas>
 </div>
-<pre id=stats style="display:inline-block;padding:10px"></pre>
+
+<pre id=stats style="display:inline-block;padding:10px 50px"></pre>
 </div>
 
 <script src=DC.js></script>
@@ -60,13 +57,13 @@ grabY = 0; //mouse input
 ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
-draw=function(){
+draw=function(t){
   ctx.clearRect( 0,0,w,h)
   ctx.fillRect( left.x - paddleW/2, left.y - paddleH/2, paddleW, paddleH)
   ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
   ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
 
-  doStats()
+  doStats(t)
   if (connected) requestAnimationFrame(draw)
 }
 
@@ -336,28 +333,28 @@ function drawgrid(x,y,w,h,xspace,yspace){
   ggrid.stroke()
 }
 
-drawgrid(50,10,700,180,10,10)
-drawgrid(50,220,700,50,10,10)
-drawgrid(50,290,700,100,10,10)
+drawgrid(50,170,700,180,10,10)
+drawgrid(50,370,700,50,10,10)
+drawgrid(50,440,700,100,10,10)
 
-ggrid.textAlign="right"
+//ggrid.textAlign="right"
 ggrid.fillStyle="green";
-ggrid.fillText("lag /",45,102)
-ggrid.fillText("lead",45,112)
-ggrid.fillText("(ms)",45,122)
+ggrid.fillText("lag / lead (ms)",55,164)
+//ggrid.fillText("lead",45,112)
+//ggrid.fillText("(ms)",45,122)
 ggrid.fillStyle="blue";
-ggrid.fillText("buffer",45,272)
+ggrid.fillText("buffer",55,364)
 ggrid.fillStyle="red";
-ggrid.fillText("ping",45,382)
-ggrid.fillText("(ms)",45,392)
+ggrid.fillText("ping (ms)",55,434)
+//ggrid.fillText("(ms)",45,392)
 
 ggrid.beginPath()
-ggrid.moveTo(50,100)
-ggrid.lineTo(750,  100)
-ggrid.moveTo(50,270)
-ggrid.lineTo(750,  270)
-ggrid.moveTo(50,390)
-ggrid.lineTo(750,  390)
+ggrid.moveTo(50,260)
+ggrid.lineTo(750,260)
+ggrid.moveTo(50,420)
+ggrid.lineTo(750,420)
+ggrid.moveTo(50,540)
+ggrid.lineTo(750,540)
 ggrid.stroke()
 
 function newGraph(pos, col){
@@ -373,14 +370,14 @@ function newGraph(pos, col){
 }
 
 needle=50
-plotLead = newGraph(100,"green")
-plotBuff = newGraph(270,"blue")
-plotPing = newGraph(390, "red")
-function doStats(){
+plotLead = newGraph(260,"green")
+plotBuff = newGraph(420,"blue")
+plotPing = newGraph(540, "red")
+function doStats(t){
   let lead = leadStack.length? avg(leadStack) : 0;
   let ping = pingStack.length? avg(pingStack) : 0;
 
-  graph.clearRect(needle,0,4,400)
+  graph.clearRect(needle,0,4,600)
 
   plotPing(-ping)
   plotBuff(-yoInputs.length*5)
@@ -393,6 +390,7 @@ function doStats(){
        +"lead: " +lead.toFixed(3) + "ms\n"
        +"buffer: "+"\u25ae".repeat(yoInputs.length);
   if (yoInputs.length<bufferSize) p+="\u25af".repeat(bufferSize-yoInputs.length)
+  p+= "\nframesync: "+(nextFrame-t).toFixed(3)+"ms"
   document.getElementById("stats").innerHTML = p
 }
 
