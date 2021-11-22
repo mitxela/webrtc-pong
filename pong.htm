@@ -13,25 +13,28 @@ Enter ID: <input id="conid">
 </form>
 
 <div id=box3 style='display:none'>
-
-<div style="position:relative">
-<pre id=stats style="position:absolute;top:10px;left:50px;"></pre>
-<canvas id=ggrid style="position:absolute;" width=800 height=600></canvas>
-<canvas id=graph style="position:absolute;" width=800 height=600></canvas>
-<canvas id=game style="border:1px solid;position:absolute" width=800 height=600></canvas>
-</div>
-
-
+ <label><input type=checkbox id=showstats oninput="showstats=this.checked;statsbox.style.display=showstats?'block':'none'"> Show stats</label>
+ <div style="position:relative">
+  <div id=statsbox>
+   <pre id=stats style="position:absolute;top:10px;left:50px;"></pre>
+   <canvas id=ggrid style="position:absolute;" width=800 height=600></canvas>
+   <canvas id=graph style="position:absolute;" width=800 height=600></canvas>
+  </div>
+  <canvas id=game style="border:1px solid;position:absolute" width=800 height=600></canvas>
+ </div>
 </div>
 
 <script src=DC.js></script>
 <script>
 canvas=document.getElementById("game")
 ctx=canvas.getContext("2d")
+ctx.imageSmoothingEnabled=false;
 w=canvas.width;h=canvas.height
 
 graph=document.getElementById("graph").getContext("2d")
 ggrid=document.getElementById("ggrid").getContext("2d")
+showstats=document.getElementById("showstats").checked;
+statsbox.style.display=showstats?'block':'none';
 
 host=false;
 connected=false;
@@ -42,7 +45,7 @@ driftThreshold = 1 //ms
 driftTrimFactor = 0.1 //
 stacksize=5 // averaging period for ping/lead times
 
-frameLength = 1000/60 //60FPS target
+frameLength = 1000/60 //1000/FPS target
 nextFrame=0
 
 myInputs=[]
@@ -51,9 +54,13 @@ yoInputs=[]
 paddleH=60
 paddleW=20
 ballSize=20
+edgeGuard=paddleH/2+ballSize/2
 left ={y:h/2,x:20}
 right={y:h/2,x:w-20}
 grabY = 0; //mouse input
+
+scoreLeft=0
+scoreRight=0
 
 ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
 
@@ -64,8 +71,22 @@ draw=function(t){
   ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
   ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
 
-  doStats(t)
+  if (!showstats) {
+    for (let i=13;i<h;i+=27) ctx.fillRect( w/2-5,i, 10,10)
+    drawScore(w/2-45,scoreLeft,1)
+    drawScore(w/2+55,scoreRight)
+  } else doStats(t)
+
   if (connected) requestAnimationFrame(draw)
+}
+var font=new Image();
+font.src="data:image/gif;base64,R0lGODlhHgAFAIABAAAAAP///yH5BAEAAAEALAAAAAAeAAUAAAIdhANom+x/WphJWTRp23h7WIEdloUaGWnpozItVQAAOw==";
+
+function drawScore(x,s,a){
+  let t=s.toString(), off=a?t.length*40:0;
+  for (var c in t) {
+    ctx.drawImage(font, (t[c].charCodeAt(0)-0x30)*3, 0, 3,5,x+c*40-off,20,30,50)
+  }
 }
 
 seed= Math.floor(Math.random()*0xFFFFFFFF);
@@ -84,7 +105,7 @@ function resetBall(){
 
   ball.x=w/2
   ball.y=h/2
-  ball.speed=2
+  ball.speed=4
   ball.hspeed = Math.cos(angle)*ball.speed
   ball.vspeed = Math.sin(angle)*ball.speed
 }
@@ -241,7 +262,8 @@ function processFrame(){
     }
   }
 
-  if (ball.x<-ballSize || ball.x>w+ballSize) resetBall()
+  if (ball.x<-ballSize) scoreRight++,resetBall()
+  if (ball.x>w+ballSize) scoreLeft++,resetBall()
 
   // take input from keyboard and add to stack
   myinput = { frame:frameNumber, dir:grabY }
@@ -276,8 +298,8 @@ function processFrame(){
 
 function processPlayer(p, input){
   p.y += input.dir;
-  if (p.y > h-paddleH) p.y = h-paddleH;
-  if (p.y <   paddleH) p.y = paddleH;
+  if (p.y > h-edgeGuard) p.y = h-edgeGuard;
+  if (p.y <   edgeGuard) p.y = edgeGuard;
 }
 
 function vcollision(p){
