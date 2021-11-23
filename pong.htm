@@ -2,9 +2,8 @@
 <meta charset="utf-8">
 
 <div id=box1>
-<h3>Create or join a game?</h3>
-<button id="createBtn">BOB: Create</button><p>
-<button id="joinBtn1">ALICE: Join</button>
+<button id="createBtn">Create Game</button><p>
+<button id="joinBtn1">Join Game</button>
 </div>
 
 <form id=box2 style='display:none;padding:20px;'>
@@ -410,6 +409,23 @@ canvas.onmousedown=function(e){
   document.onmouseup=function(e){
     document.onmouseup=null;
     document.onmousemove=null;
+  }
+}
+
+touches=[];
+canvas.ontouchstart=function(e){
+  e.preventDefault();
+  for (var i =e.changedTouches.length;i--;){
+    var t={sy:e.changedTouches[i].pageY}
+    touches[e.changedTouches[i].identifier]=t;
+  }
+}
+canvas.ontouchmove=function(e){
+  e.preventDefault();
+  for (var i=e.changedTouches.length;i--;){
+     var t=touches[e.changedTouches[i].identifier];
+     grabY += (e.changedTouches[i].pageY - t.sy)
+     t.sy=e.changedTouches[i].pageY;
   }
 }
 
