@@ -41,7 +41,7 @@ enablesynctick=document.getElementById("enablesynctick").checked;
 
 host=false;
 connected=false;
-bufferSize = 3;
+bufferSize = 1;
 frameNumber = -bufferSize;
 
 driftThreshold = 1 //ms
@@ -56,6 +56,9 @@ synctick=0;
 
 myInputs=[]
 yoInputs=[]
+rollbackState={}
+rollbackInputs=[]
+yoInputLastDir=0;
 
 paddleH=60
 paddleW=20
@@ -69,6 +72,19 @@ scoreLeft=0
 scoreRight=0
 
 ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
+
+function storeRollbackState(){
+  rollbackState = {frame:myInputs[0].frame, seed, scoreLeft, scoreRight, ball:objcopy(ball), leftY:left.y, rightY:right.y}
+}
+function loadRollbackState(){
+  left.y=rollbackState.leftY
+  right.y=rollbackState.rightY
+  seed=rollbackState.seed
+  scoreLeft=rollbackState.scoreLeft
+  scoreRight=rollbackState.scoreRight
+  ball=objcopy(rollbackState.ball)
+}
+
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(t){
@@ -184,8 +200,27 @@ setup = {
         processFrame()
         break;
       case "input":
-        yoInputs.push(data.input)
 
+        if (rollbackInputs.length) {
+          let myInput = rollbackInputs.shift()
+          let yoInput = data.input
+          loadRollbackState()
+
+          if (yoInput.frame != myInput.frame) console.log("sync error waah",myInput.frame,yoInput.frame)
+
+          processGameLogic(myInput,yoInput)
+          storeRollbackState()
+
+          // from here, run the rest of the buffer again
+          yoInputLastDir = yoInput.dir
+
+          for (let i=0;i<rollbackInputs.length;i++) {
+            processGameLogic( rollbackInputs[i], {dir:yoInputLastDir} )
+          }
+
+        } else {
+          yoInputs.push(data.input)
+        }
         // check/adjust timing
         //input packet contains estimate until next frame
         let otherNextFrame = recTime -ping/2 + data.delay
@@ -205,9 +240,13 @@ setup = {
 
 CA=2; CB=15; CC=-4;
 
-keymap={38:0,40:0}
-document.onkeydown=function(e){keymap[e.keyCode]=1}
-document.onkeyup  =function(e){keymap[e.keyCode]=0}
+function objcopy(o){
+  let copy = {}
+  for (var a in o) {
+    if (o.hasOwnProperty(a)) copy[a] = o[a];
+  }
+  return copy
+}
 
 for (let i=0;i<bufferSize;i++) {
   myInputs.push( { frame:frameNumber, dir:0 } )
@@ -215,20 +254,70 @@ for (let i=0;i<bufferSize;i++) {
   frameNumber++
 }
 function processFrame(){
-  // if yoInputs buffer empty, we need to explicitly delay
+
+  let yoInput,myInput;
   if (yoInputs.length==0) {
-    //console.log("input buffer empty!!")
-    nextFrame += 1
-    if (connected) setTimeout(processFrame,1)
-    return
+    if (rollbackInputs.length>=10){
+      //give up and delay
+      nextFrame += 1
+      if (connected) setTimeout(processFrame,1)
+      return
+    }
+    if (rollbackInputs.length==0) {
+      //commence rollback
+      storeRollbackState()
+    } 
+    rollbackInputs.push(myInputs[0])
+
+    yoInput = {frame:myInputs[0].frame, dir:yoInputLastDir}
+
+  } else {
+    yoInput = yoInputs.shift()
+    yoInputLastDir = yoInput.dir
   }
 
-  // consume inputs from stack, recalculate game
-  let myInput = myInputs.shift()
-  let yoInput = yoInputs.shift()
+  myInput = myInputs.shift()
 
   if (myInput.frame != yoInput.frame) {console.log("SYNC ERROR AHHH", myInput,yoInput); return}
 
+  processGameLogic(myInput,yoInput)
+
+  // take input from keyboard and add to stack
+  myinput = { frame:frameNumber, dir:grabY }
+  grabY = 0;
+  myInputs.push( myinput )
+
+  // timing drift correction - should this be before or after transmitting?
+  if (leadStack.length==stacksize) {
+    let lead = -avg(leadStack)
+    if (lead>driftThreshold) { //we are running fast
+       nextFrame += Math.min(lead*driftTrimFactor, frameLength)
+    }
+  }
+
+  frameNumber++
+  nextFrame += frameLength
+
+  let now = performance.now()
+  if (nextFrame<now-10) {
+    //console.log('timing disrupted')
+    nextFrame=now
+  }
+  let delay = nextFrame - now
+
+  // send inputs to other
+  send({type:"input", input:myinput, delay})
+
+  if (enablesynctick) {
+    if (now-lastAnimationFrame-synctick<CA || now-lastAnimationFrame-synctick>CB) synctick=CC;
+    else synctick=0
+    //else if (now-lastAnimationFrame>) synctick=0
+  }
+
+  if (connected) setTimeout(processFrame, delay + synctick)
+}
+
+function processGameLogic(myInput,yoInput){
   let oldlefty=left.y, oldrighty=right.y
 
   if (host) { processPlayer(left, myInput); processPlayer(right, yoInput); }
@@ -277,42 +366,6 @@ function processFrame(){
 
   if (ball.x<-ballSize) scoreRight++,resetBall()
   if (ball.x>w+ballSize) scoreLeft++,resetBall()
-
-  // take input from keyboard and add to stack
-  myinput = { frame:frameNumber, dir:grabY }
-  grabY = 0;
-  myInputs.push( myinput )
-
-
-  // timing drift correction - should this be before or after transmitting?
-  if (leadStack.length==stacksize) {
-    let lead = -avg(leadStack)
-    if (lead>driftThreshold) { //we are running fast
-       nextFrame += Math.min(lead*driftTrimFactor, frameLength)
-    }
-  }
-
-  frameNumber++
-  nextFrame += frameLength
-
-  let now = performance.now()
-  if (nextFrame<now-10) {
-    //console.log('timing disrupted')
-    nextFrame=now
-  }
-  let delay = nextFrame - now
-
-  // send inputs to other
-  send({type:"input", input:myinput, delay})
-
-  if (enablesynctick) {
-    if (now-lastAnimationFrame-synctick<CA || now-lastAnimationFrame-synctick>CB) synctick=CC;
-    else synctick=0
-    //else if (now-lastAnimationFrame>) synctick=0
-  }
-
-
-  if (connected) setTimeout(processFrame, delay + synctick)
 }
 
 function processPlayer(p, input){
@@ -387,6 +440,7 @@ ggrid.fillStyle="blue";
 ggrid.fillText("buffer",55,364)
 ggrid.fillStyle="red";
 ggrid.fillText("ping (ms)",55,434)
+ggrid.fillText("rollback buffer",155,364)
 ggrid.fillStyle="orange";
 ggrid.fillText("framesync (ms)",105,434)
 
@@ -415,6 +469,7 @@ needle=50
 plotLead = newGraph(260,"green")
 plotSnTc = newGraph(260,"cyan")
 plotBuff = newGraph(420,"blue")
+plotRolb = newGraph(420,"red")
 plotPing = newGraph(540,"red")
 plotSync = newGraph(540,"orange")
 function doStats(t){
@@ -425,6 +480,7 @@ function doStats(t){
 
   plotPing(-ping)
   plotBuff(-yoInputs.length*5)
+  plotRolb(-rollbackInputs.length*5)
   plotLead(lead)
   plotSync((t-nextFrame)*5)
   plotSnTc(synctick*3)
