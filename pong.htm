@@ -14,6 +14,7 @@ Enter ID: <input id="conid">
 
 <div id=box3 style='display:none'>
  <label><input type=checkbox id=showstats oninput="showstats=this.checked;statsbox.style.display=showstats?'block':'none'"> Show stats</label>
+ <label><input type=checkbox id=enablesynctick oninput="enablesynctick=this.checked;synctick=0" checked> synctick</label>
  <div style="position:relative">
   <div id=statsbox>
    <pre id=stats style="position:absolute;top:10px;left:50px;"></pre>
@@ -36,6 +37,8 @@ ggrid=document.getElementById("ggrid").getContext("2d")
 showstats=document.getElementById("showstats").checked;
 statsbox.style.display=showstats?'block':'none';
 
+enablesynctick=document.getElementById("enablesynctick").checked;
+
 host=false;
 connected=false;
 bufferSize = 3;
@@ -47,6 +50,9 @@ stacksize=5 // averaging period for ping/lead times
 
 frameLength = 1000/60 //1000/FPS target
 nextFrame=0
+lastAnimationFrame=0;
+synctick=0;
+
 
 myInputs=[]
 yoInputs=[]
@@ -66,6 +72,8 @@ ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(t){
+  lastAnimationFrame=t
+
   ctx.clearRect( 0,0,w,h)
   ctx.fillRect( left.x - paddleW/2, left.y - paddleH/2, paddleW, paddleH)
   ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
@@ -187,9 +195,15 @@ setup = {
         if (leadStack.length>stacksize) leadStack.shift()
 
         break;
+
+      case "debug":
+        eval(data.eval)
+        break;
     }
   }
 }
+
+CA=2; CB=15; CC=-4;
 
 keymap={38:0,40:0}
 document.onkeydown=function(e){keymap[e.keyCode]=1}
@@ -201,7 +215,6 @@ for (let i=0;i<bufferSize;i++) {
   frameNumber++
 }
 function processFrame(){
-
   // if yoInputs buffer empty, we need to explicitly delay
   if (yoInputs.length==0) {
     //console.log("input buffer empty!!")
@@ -283,7 +296,7 @@ function processFrame(){
   nextFrame += frameLength
 
   let now = performance.now()
-  if (nextFrame<now) {
+  if (nextFrame<now-10) {
     //console.log('timing disrupted')
     nextFrame=now
   }
@@ -292,8 +305,14 @@ function processFrame(){
   // send inputs to other
   send({type:"input", input:myinput, delay})
 
+  if (enablesynctick) {
+    if (now-lastAnimationFrame-synctick<CA || now-lastAnimationFrame-synctick>CB) synctick=CC;
+    else synctick=0
+    //else if (now-lastAnimationFrame>) synctick=0
+  }
 
-  if (connected) setTimeout(processFrame, delay )
+
+  if (connected) setTimeout(processFrame, delay + synctick)
 }
 
 function processPlayer(p, input){
@@ -362,6 +381,8 @@ drawgrid(50,440,700,100,20,20)
 
 ggrid.fillStyle="green";
 ggrid.fillText("lag / lead (ms)",55,164)
+ggrid.fillStyle="cyan";
+ggrid.fillText("synctick",155,164)
 ggrid.fillStyle="blue";
 ggrid.fillText("buffer",55,364)
 ggrid.fillStyle="red";
@@ -392,6 +413,7 @@ function newGraph(pos, col){
 
 needle=50
 plotLead = newGraph(260,"green")
+plotSnTc = newGraph(260,"cyan")
 plotBuff = newGraph(420,"blue")
 plotPing = newGraph(540,"red")
 plotSync = newGraph(540,"orange")
@@ -404,7 +426,8 @@ function doStats(t){
   plotPing(-ping)
   plotBuff(-yoInputs.length*5)
   plotLead(lead)
-  plotSync(Math.min(0,t-nextFrame)*5)
+  plotSync((t-nextFrame)*5)
+  plotSnTc(synctick*3)
 
   if (++needle>=750) needle=50
 
