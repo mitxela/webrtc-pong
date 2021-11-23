@@ -68,7 +68,7 @@ grabY = 0; //mouse input
 scoreLeft=0
 scoreRight=0
 
-ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
+ball={x:0,y:0,speed:0,hspeed:0,vspeed:0,blurstack:[]}
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(t){
@@ -77,7 +77,13 @@ draw=function(t){
   ctx.clearRect( 0,0,w,h)
   ctx.fillRect( left.x - paddleW/2, left.y - paddleH/2, paddleW, paddleH)
   ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
-  ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
+
+  ctx.globalAlpha=3/ball.blurstack.length;
+  for (let b of ball.blurstack)
+    ctx.fillRect( b[0]-ballSize/2,b[1]-ballSize/2, ballSize, ballSize )
+  ctx.globalAlpha=1
+
+  //ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
 
   if (!showstats) {
     for (let i=13;i<h;i+=27) ctx.fillRect( w/2-5,i, 10,10)
@@ -203,6 +209,7 @@ setup = {
   }
 }
 
+// CB should be native FPS frame length minus CA
 CA=2; CB=15; CC=-4;
 
 keymap={38:0,40:0}
@@ -237,6 +244,7 @@ function processFrame(){
   // calculate ball and stuff
 
   if (frameNumber==0) resetBall();
+  ball.blurstack=[]
 
   let impulses = Math.ceil(ball.speed), step=1/impulses;
   for (let i=0;i<impulses;i++) {
@@ -273,6 +281,7 @@ function processFrame(){
       if (ball.y<oldrighty) ball.y=right.y-paddleH/2-ballSize/2;
       else ball.y=right.y+paddleH/2+ballSize/2;
     }
+    ball.blurstack.push([ball.x,ball.y])
   }
 
   if (ball.x<-ballSize) scoreRight++,resetBall()
