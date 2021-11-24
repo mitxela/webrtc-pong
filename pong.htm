@@ -30,7 +30,6 @@ Buffer Size: <select name=bufsize id=bufsize>
 
 <div id=box4 style='display:none'>
  <label><input type=checkbox id=showstats oninput="showstats=this.checked;statsbox.style.display=showstats?'block':'none'"> Show stats</label>
- <label><input type=checkbox id=enablesynctick oninput="enablesynctick=this.checked;synctick=0" checked> synctick</label>
  <div style="position:relative">
   <div id=statsbox>
    <pre id=stats style="position:absolute;top:10px;left:50px;"></pre>
@@ -52,8 +51,6 @@ graph=document.getElementById("graph").getContext("2d")
 ggrid=document.getElementById("ggrid").getContext("2d")
 showstats=document.getElementById("showstats").checked;
 statsbox.style.display=showstats?'block':'none';
-
-enablesynctick=document.getElementById("enablesynctick").checked;
 
 host=false;
 connected=false;
@@ -342,11 +339,9 @@ function processFrame(){
   // send inputs to other
   send({type:"input", input:myinput, delay})
 
-  if (enablesynctick) {
-    let framesync = now-lastAnimationFrame-synctick;
-    if (framesync<2 || framesync>15) synctick=-4;
-    else synctick=0
-  }
+  let framesync = now-lastAnimationFrame-synctick;
+  if (framesync<2 || framesync>15) synctick=-4;
+  else synctick=0
 
   if (connected) setTimeout(processFrame, delay + synctick)
 }
