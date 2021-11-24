@@ -8,7 +8,7 @@ header("Pragma: no-cache");
 require('../db.php'); //$db = mysqli_connect(...);
 
 if (isset($_POST['id'])) {
-  if (preg_match('/\d{'.$id_length.'}/',$_POST['id'])) $id=$_POST['id'];
+  if (preg_match('/^\d{'.$id_length.'}$/',$_POST['id'])) $id=$_POST['id'];
   else die();
 }
 if ($_POST['to']=='alice') {

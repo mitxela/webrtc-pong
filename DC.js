@@ -5,7 +5,7 @@ const DC={id:null, dc:null, me:null, you:null};
 
   function chooseID(){
     let len = 3;
-    let max=Math.pow(10,len);
+    let max=Math.pow(10,len)-1;
     let min=Math.pow(10,len-1);
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
