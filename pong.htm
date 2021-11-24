@@ -40,7 +40,7 @@ enablesynctick=document.getElementById("enablesynctick").checked;
 
 host=false;
 connected=false;
-bufferSize = 1;
+bufferSize = 4;
 frameNumber = -bufferSize;
 
 driftThreshold = 1 //ms
@@ -50,6 +50,9 @@ stacksize=5 // averaging period for ping/lead times
 frameLength = 1000/60 //1000/FPS target
 nextFrame=0
 lastAnimationFrame=0;
+animFrameRate=0; // measured animation frame rate, not target
+animFrameRateSample=0;
+animFrameRateCount=0;
 synctick=0;
 
 
@@ -87,6 +90,13 @@ function loadRollbackState(){
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(t){
+  animFrameRateCount+=(t-lastAnimationFrame);
+  if (++animFrameRateSample >= 18) {
+    animFrameRate = 18*1000/animFrameRateCount
+    animFrameRateCount=0
+    animFrameRateSample=0
+  }
+
   lastAnimationFrame=t
 
   ctx.clearRect( 0,0,w,h)
@@ -508,7 +518,8 @@ function doStats(t){
        +"lead: " +lead.toFixed(3) + "ms\n"
        +"buffer: "+"\u25ae".repeat(yoInputs.length);
   if (yoInputs.length<bufferSize) p+="\u25af".repeat(bufferSize-yoInputs.length)
-  p+= "\nframesync: "+(nextFrame-t).toFixed(3)+"ms"
+  p+= "\nframesync: "+(nextFrame-t).toFixed(3)+"ms\n"
+  p+= "Display FPS: "+animFrameRate.toFixed(3)
   document.getElementById("stats").innerHTML = p
 }
 
