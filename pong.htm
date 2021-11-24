@@ -75,6 +75,13 @@ scoreRight=0
 
 ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
 
+function objcopy(o){
+  let copy = {}
+  for (var a in o) {
+    if (o.hasOwnProperty(a)) copy[a] = o[a];
+  }
+  return copy
+}
 function storeRollbackState(){
   rollbackState = {frame:myInputs[0].frame, seed, scoreLeft, scoreRight, ball:objcopy(ball), leftY:left.y, rightY:right.y}
 }
@@ -115,10 +122,10 @@ draw=function(t){
 var font=new Image();
 font.src="data:image/gif;base64,R0lGODlhHgAFAIABAAAAAP///yH5BAEAAAEALAAAAAAeAAUAAAIdhANom+x/WphJWTRp23h7WIEdloUaGWnpozItVQAAOw==";
 
-function drawScore(x,s,a){
-  let t=s.toString(), off=a?t.length*40:0;
+function drawScore(x,score,alignRight){
+  let t=score.toString(), offset=alignRight?t.length*40:0;
   for (var c in t) {
-    ctx.drawImage(font, (t[c].charCodeAt(0)-0x30)*3, 0, 3,5,x+c*40-off,20,30,50)
+    ctx.drawImage(font, (t[c].charCodeAt(0)-0x30)*3, 0, 3,5,x+c*40-offset,20,30,50)
   }
 }
 
@@ -247,16 +254,6 @@ setup = {
   }
 }
 
-CA=2; CB=15; CC=-4;
-
-function objcopy(o){
-  let copy = {}
-  for (var a in o) {
-    if (o.hasOwnProperty(a)) copy[a] = o[a];
-  }
-  return copy
-}
-
 for (let i=0;i<bufferSize;i++) {
   myInputs.push( { frame:frameNumber, dir:0 } )
   yoInputs.push( { frame:frameNumber, dir:0 } )
@@ -291,7 +288,7 @@ function processFrame(){
 
   processGameLogic(myInput,yoInput)
 
-  // take input from keyboard and add to stack
+  // take input and add to stack
   myinput = { frame:frameNumber, dir:grabY }
   grabY = 0;
   myInputs.push( myinput )
@@ -308,7 +305,7 @@ function processFrame(){
   nextFrame += frameLength
 
   let now = performance.now()
-  if (nextFrame<now-10) {
+  if (nextFrame<now) {
     //console.log('timing disrupted')
     nextFrame=now
   }
@@ -318,9 +315,9 @@ function processFrame(){
   send({type:"input", input:myinput, delay})
 
   if (enablesynctick) {
-    if (now-lastAnimationFrame-synctick<CA || now-lastAnimationFrame-synctick>CB) synctick=CC;
+    let framesync = now-lastAnimationFrame-synctick;
+    if (framesync<2 || framesync>15) synctick=-4;
     else synctick=0
-    //else if (now-lastAnimationFrame>) synctick=0
   }
 
   if (connected) setTimeout(processFrame, delay + synctick)
@@ -343,7 +340,8 @@ function processGameLogic(myInput,yoInput){
     ball.y += ball.vspeed*step;
 
     // bounce off top and bottom
-    if (ball.y>h-10 || ball.y<10) ball.vspeed =-ball.vspeed;
+    if ((ball.y>h-10 && ball.vspeed>0 )
+     || (ball.y<10   && ball.vspeed<0 )) ball.vspeed =-ball.vspeed;
 
     // check for face collision with paddle
     if (Math.round(ball.x-ballSize/2) == Math.round(left.x+paddleW/2-1) && vcollision(left)) {
