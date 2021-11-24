@@ -40,7 +40,7 @@ enablesynctick=document.getElementById("enablesynctick").checked;
 
 host=false;
 connected=false;
-bufferSize = 4;
+bufferSize = 3;
 frameNumber = -bufferSize;
 
 driftThreshold = 1 //ms
@@ -203,16 +203,23 @@ setup = {
         if (pingStack.length < stacksize) send({type:"SYN"})
         else {
           pingStack.shift() // The first is usually unrepresentative, throw away
-          send({type:"ACK", seed})
+          let halftrip = avg(pingStack)/2
+
+          bufferSize = Math.ceil(halftrip/frameLength)+1
+          initBuffer()
+
+          send({type:"ACK", seed, bufferSize})
 
           // wait for half the roundtrip time before starting the first frame
-          nextFrame = performance.now() + avg(pingStack)/2
+          nextFrame = performance.now() + halftrip
           setTimeout(processFrame, nextFrame - performance.now())
         }
         break;
       case "ACK":
         seed=data.seed
+        bufferSize = data.bufferSize
         nextFrame = performance.now()
+        initBuffer()
         processFrame()
         break;
       case "input":
@@ -254,10 +261,13 @@ setup = {
   }
 }
 
-for (let i=0;i<bufferSize;i++) {
-  myInputs.push( { frame:frameNumber, dir:0 } )
-  yoInputs.push( { frame:frameNumber, dir:0 } )
-  frameNumber++
+function initBuffer(){
+  frameNumber = -bufferSize;
+  for (let i=0;i<bufferSize;i++) {
+    myInputs.push( { frame:frameNumber, dir:0 } )
+    yoInputs.push( { frame:frameNumber, dir:0 } )
+    frameNumber++
+  }
 }
 function processFrame(){
 
