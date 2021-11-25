@@ -3,11 +3,12 @@
 <meta name=viewport content="width=device-width, initial-scale=1.0">
 <style>
 canvas{max-width:100%}
-body{text-align:center}
+body{text-align:center;color:#e8e8e8;background:#131313}
 pre{text-align:left}
 </style>
 
 <div id=box1>
+<h1>WebRTC Pong</h1>
 <button id="createBtn">Create Game</button><p>
 <button id="joinBtn1">Join Game</button>
 </div>
@@ -139,8 +140,9 @@ draw=function(t){
   if (showstats) doStats(t)
   if (connected) requestAnimationFrame(draw)
 }
+ctx.fillStyle='#e8e8e8'
 var font=new Image();
-font.src="data:image/gif;base64,R0lGODlhHgAFAIABAAAAAP///yH5BAEAAAEALAAAAAAeAAUAAAIdhANom+x/WphJWTRp23h7WIEdloUaGWnpozItVQAAOw==";
+font.src="data:image/gif;base64,R0lGODlhHgAFAIAB"+btoa([0,0xe8,0xe8,0xe8,0xff,0xff].reduce((a,b)=>a+String.fromCharCode(b),""))+"/yH5BAEAAAEALAAAAAAeAAUAAAIdhANom+x/WphJWTRp23h7WIEdloUaGWnpozItVQAAOw==";
 
 function drawScore(x,score,alignRight){
   let t=score.toString(), offset=alignRight?t.length*40:0;
@@ -469,7 +471,7 @@ canvas.ontouchmove=function(e){
 
 window.onload=window.onresize=function(){scaleFactor=Math.max(1,w/(window.innerWidth-16))}
 
-ggrid.strokeStyle="rgba(0,0,0,0.2)"
+ggrid.strokeStyle="rgba(255,255,255,0.2)"
 function drawgrid(x,y,w,h,linespace,zero){
   ggrid.beginPath()
   for (let i=x;i<=x+w;i+=linespace) {
@@ -505,10 +507,10 @@ function newGraph(name, col, y, h, zero, gridsize){
 
 needle=50
 plotLead = newGraph("lag / lead (ms)", "green", 20, 180, -90, 20)
-plotBuff = newGraph("buffer", "blue", 220, 50, 0, 10)
+plotBuff = newGraph("buffer", "cyan", 220, 50, 0, 10)
 plotRolb = newGraph("rollback buffer", "red", 220, 50, 0)
 plotSnTc = newGraph("synctick", "teal", 290,40, 0, 20)
-plotPing = newGraph("ping (ms)", "black", 350, 140, 0, 20)
+plotPing = newGraph("ping (ms)", "white", 350, 140, 0, 20)
 plotSync = newGraph("framesync (ms)", "orange", 350,140,-20)
 
 function doStats(t){
