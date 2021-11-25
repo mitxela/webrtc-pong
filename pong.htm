@@ -418,6 +418,7 @@ createBtn.onclick = function() {
 joinBtn1.onclick = function(){
   box2.style.display='block'
   box1.style.display='none'
+  conid.value = DC.id ? DC.id:"";
   conid.focus()
 }
 joinBtn2.onclick = function(){
@@ -426,7 +427,6 @@ joinBtn2.onclick = function(){
   return false
 }
 
-conid.value = "";
 
 
 

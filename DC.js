@@ -3,6 +3,9 @@ const DC={id:null, dc:null, me:null, you:null};
 (function(){
   URL='rtc-signal.php';
 
+  let oldid = window.location.hash.match(/^#([1-9]\d{2})$/);
+  if (oldid) DC.id = oldid[1];
+
   function chooseID(){
     let len = 3;
     let max=Math.pow(10,len)-1;
@@ -50,6 +53,7 @@ const DC={id:null, dc:null, me:null, you:null};
         setTimeout(poll, 1000);
       }
     }
+    window.location.replace('#'+DC.id)
   }
 
   function gotmsgs(d){
@@ -78,7 +82,7 @@ const DC={id:null, dc:null, me:null, you:null};
   DC.host = function( setup ) {
     DC.me='bob';
     DC.you='alice';
-    DC.id= chooseID();
+    if (!DC.id) DC.id = chooseID();
 
     init()
     DC.dc = pc.createDataChannel('test')
