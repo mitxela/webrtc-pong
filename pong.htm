@@ -28,6 +28,8 @@ Buffer Size: <select name=bufsize id=bufsize>
 </select>
 </div>
 
+<pre id=debuglog></pre>
+
 <div id=box4 style='display:none'>
  <label><input type=checkbox id=showstats oninput="showstats=this.checked;statsbox.style.display=showstats?'block':'none'"> Show stats</label>
  <div style="position:relative">
@@ -180,9 +182,9 @@ function avg(a){
 
 setup = {
   onopen: function(){
-    console.log('[ connected ]');
     connected=true;
     requestAnimationFrame(draw)
+    debuglog.style.display='none';
     box1.style.display='none';
     box2.style.display='none';
     box3.style.display='none';
@@ -194,7 +196,8 @@ setup = {
   },
   onclose: function(){
     connected=false;
-    console.log('[ disconnected ]')
+    debuglog.innerHTML = '[ disconnected ]'
+    debuglog.style.display='block';
 
   },
   onmessage:function(e) {

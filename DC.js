@@ -6,6 +6,12 @@ const DC={id:null, dc:null, me:null, you:null};
   let oldid = window.location.hash.match(/^#([1-9]\d{2})$/);
   if (oldid) DC.id = oldid[1];
 
+  DC.log=function(...e) {
+    console.log(...e)
+    e[1]=JSON.stringify(e[1])
+    document.getElementById("debuglog").innerHTML += e.join(" ")+"\n"
+  }
+
   function chooseID(){
     let len = 3;
     let max=Math.pow(10,len)-1;
@@ -39,6 +45,7 @@ const DC={id:null, dc:null, me:null, you:null};
 
     pc.onicecandidate = function(e) {
       if (e.candidate != null) {
+        DC.log("got ice candidate: ",e.candidate)
         post("id="+DC.id+"&to="+DC.you+"&msg="+encodeURIComponent(JSON.stringify({"ice":e.candidate})), gotmsgs);
       }
     }
@@ -59,7 +66,7 @@ const DC={id:null, dc:null, me:null, you:null};
   function gotmsgs(d){
     for (c of d.msgs) {
       if (c.ice) {
-        pc.addIceCandidate(new RTCIceCandidate(c.ice)).catch(eHandler)
+        pc.addIceCandidate(new RTCIceCandidate(c.ice)).catch(DC.log)
       }
       if (c.sdp) {
         gotsdp(c.sdp)
@@ -68,15 +75,16 @@ const DC={id:null, dc:null, me:null, you:null};
   }
 
   function gotsdp(sdp){
+    DC.log("got sdp",sdp)
     pc.setRemoteDescription( new RTCSessionDescription(sdp)).then(function(){
-      if (sdp.type=='offer') pc.createAnswer().then(createdDesc).catch(eHandler)
+      if (sdp.type=='offer') pc.createAnswer().then(createdDesc).catch(DC.log)
     });
   }
 
   function createdDesc(desc){
     pc.setLocalDescription(desc).then(function(){
       post("to="+DC.you+"&id="+DC.id+"&msg="+encodeURIComponent(JSON.stringify({"sdp":pc.localDescription})),gotmsgs)
-    }).catch(eHandler);
+    }).catch(DC.log);
   }
 
   DC.host = function( setup ) {
@@ -87,7 +95,7 @@ const DC={id:null, dc:null, me:null, you:null};
     init()
     DC.dc = pc.createDataChannel('test')
     Object.assign(DC.dc, setup)
-    pc.createOffer().then(createdDesc).catch(eHandler)
+    pc.createOffer().then(createdDesc).catch(DC.log)
 
     return DC.id;
   };
@@ -109,10 +117,6 @@ const DC={id:null, dc:null, me:null, you:null};
     if (DC.dc && DC.dc.readyState=="open" && data) {
       DC.dc.send(JSON.stringify(data));
     }
-  }
-
-  function eHandler(error) {
-    console.log(error);
   }
 
 })();
