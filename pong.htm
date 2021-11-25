@@ -54,6 +54,7 @@ ctx=canvas.getContext("2d")
 ctx.imageSmoothingEnabled=false;
 w=canvas.width;h=canvas.height
 
+viewport = document.querySelector('meta[name="viewport"]');
 graph=document.getElementById("graph").getContext("2d")
 ggrid=document.getElementById("ggrid").getContext("2d")
 showstats=document.getElementById("showstats").checked;
@@ -454,39 +455,26 @@ touches=[];
 canvas.ontouchstart=function(e){
   e.preventDefault()
   for (let i =e.changedTouches.length;i--;){
-    let t={sy:e.changedTouches[i].clientY, sx:e.changedTouches[i].clientX}
+    let t={sy:e.changedTouches[i].pageY}
     touches[e.changedTouches[i].identifier]=t;
   }
 }
 canvas.ontouchmove=function(e){
   e.preventDefault()
-  let scrollx=0,scrolly=0;
-  for (let i=0;i<e.changedTouches.length;i++){
-    let t=touches[e.changedTouches[i].identifier];
-    let y = e.changedTouches[i].clientY, x = e.changedTouches[i].clientX;
-    if (e.touches.length>1) {
-      scrollx+= x-t.sx
-      scrolly+= y-t.sy
-    } else {
-      grabY += (y - t.sy)
-    }
-    if (e.touches.length>2) zoomOutMobile()
-    t.sy=y;
-    t.sx=x;
+  for (let i=e.changedTouches.length;i--;){
+     let t=touches[e.changedTouches[i].identifier];
+     grabY += (e.changedTouches[i].pageY - t.sy)
+     t.sy=e.changedTouches[i].pageY;
   }
-  window.scrollBy( -scrollx, -scrolly )
-}
-
-function zoomOutMobile() {
-  const viewport = document.querySelector('meta[name="viewport"]');
-
-  if ( viewport ) {
+  if (e.touches.length>2) { //3-finger touch to reset zoom level
     viewport.content = 'initial-scale=1';
     viewport.content = 'width=device-width';
   }
 }
 
-window.onload=window.onresize=function(){scaleFactor=Math.max(1,w/(window.innerWidth-16))}
+window.onload=window.onresize=function(){
+  scaleFactor=Math.max(1,w/(window.innerWidth-16),h/(window.innerHeight*0.98))
+}
 
 ggrid.strokeStyle="rgba(255,255,255,0.2)"
 function drawgrid(x,y,w,h,linespace,zero){
