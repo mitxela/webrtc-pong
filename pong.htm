@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <meta name=viewport content="width=device-width, initial-scale=1.0">
 <style>
-canvas{max-width:100%}
+canvas{max-width:100%;max-height:98vh}
 body{text-align:center;color:#e8e8e8;background:#131313}
 pre{text-align:left}
 </style>
@@ -453,17 +453,36 @@ canvas.onmousedown=function(e){
 touches=[];
 canvas.ontouchstart=function(e){
   e.preventDefault()
-  for (var i =e.changedTouches.length;i--;){
-    var t={sy:e.changedTouches[i].pageY}
+  for (let i =e.changedTouches.length;i--;){
+    let t={sy:e.changedTouches[i].clientY, sx:e.changedTouches[i].clientX}
     touches[e.changedTouches[i].identifier]=t;
   }
 }
 canvas.ontouchmove=function(e){
   e.preventDefault()
-  for (var i=e.changedTouches.length;i--;){
-     var t=touches[e.changedTouches[i].identifier];
-     grabY += (e.changedTouches[i].pageY - t.sy)
-     t.sy=e.changedTouches[i].pageY;
+  let scrollx=0,scrolly=0;
+  for (let i=0;i<e.changedTouches.length;i++){
+    let t=touches[e.changedTouches[i].identifier];
+    let y = e.changedTouches[i].clientY, x = e.changedTouches[i].clientX;
+    if (e.touches.length>1) {
+      scrollx+= x-t.sx
+      scrolly+= y-t.sy
+    } else {
+      grabY += (y - t.sy)
+    }
+    if (e.touches.length>2) zoomOutMobile()
+    t.sy=y;
+    t.sx=x;
+  }
+  window.scrollBy( -scrollx, -scrolly )
+}
+
+function zoomOutMobile() {
+  const viewport = document.querySelector('meta[name="viewport"]');
+
+  if ( viewport ) {
+    viewport.content = 'initial-scale=1';
+    viewport.content = 'width=device-width';
   }
 }
 

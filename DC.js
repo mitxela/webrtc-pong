@@ -60,7 +60,7 @@ const DC={id:null, dc:null, me:null, you:null};
         setTimeout(poll, 1000);
       }
     }
-    window.location.replace('#'+DC.id)
+    window.location.assign('#'+DC.id)
   }
 
   function gotmsgs(d){
