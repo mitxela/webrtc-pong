@@ -1,8 +1,11 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name=viewport content="width=device-width, initial-scale=1.0">
-
-<style>canvas{max-width:100%;touch-action:pan-x pinch-zoom}</style>
+<style>
+canvas{max-width:100%}
+body{text-align:center}
+pre{text-align:left}
+</style>
 
 <div id=box1>
 <button id="createBtn">Create Game</button><p>
@@ -10,7 +13,7 @@
 </div>
 
 <form id=box2 style='display:none;padding:20px;'>
-Enter ID: <input id="conid">
+Enter ID: <input id="conid" size=8>
 <button id="joinBtn2">Join</button>
 </form>
 
@@ -34,14 +37,12 @@ Buffer Size: <select name=bufsize id=bufsize>
 <pre id=debuglog></pre>
 
 <div id=box4 style='display:none'>
- <label><input type=checkbox id=showstats oninput="showstats=this.checked;statsbox.style.display=showstats?'block':'none'"> Show stats</label>
- <div style="position:relative">
-  <div id=statsbox>
-   <pre id=stats style="position:absolute;top:10px;left:50px;"></pre>
-   <canvas id=ggrid style="position:absolute;" width=800 height=600></canvas>
-   <canvas id=graph style="position:absolute;" width=800 height=600></canvas>
-  </div>
-  <canvas id=game style="border:1px solid;position:absolute" width=800 height=600></canvas>
+ <canvas id=game style="outline:1px solid;touch-action:pan-x pinch-zoom" width=800 height=600></canvas>
+ <br><label><input type=checkbox id=showstats oninput="showstats=this.checked;statsbox.style.display=showstats?'block':'none'"> Show stats</label>
+ <div id=statsbox style="position:relative">
+  <pre id=stats style="display:inline-block;width:200px"></pre><br>
+  <canvas id=ggrid style="position:absolute;" width=800 height=600></canvas>
+  <canvas id=graph width=800 height=600></canvas>
  </div>
 </div>
 
@@ -131,12 +132,11 @@ draw=function(t){
   ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
   ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
 
-  if (!showstats) {
-    for (let i=13;i<h;i+=27) ctx.fillRect( w/2-5,i, 10,10)
-    drawScore(w/2-45,scoreLeft,1)
-    drawScore(w/2+55,scoreRight)
-  } else doStats(t)
+  for (let i=13;i<h;i+=27) ctx.fillRect( w/2-5,i, 10,10)
+  drawScore(w/2-45,scoreLeft,1)
+  drawScore(w/2+55,scoreRight)
 
+  if (showstats) doStats(t)
   if (connected) requestAnimationFrame(draw)
 }
 var font=new Image();
@@ -470,75 +470,59 @@ canvas.ontouchmove=function(e){
 window.onload=window.onresize=function(){scaleFactor=Math.max(1,w/(window.innerWidth-16))}
 
 ggrid.strokeStyle="rgba(0,0,0,0.2)"
-function drawgrid(x,y,w,h,xspace,yspace){
+function drawgrid(x,y,w,h,linespace,zero){
   ggrid.beginPath()
-  for (let i=x;i<=x+w;i+=xspace) {
+  for (let i=x;i<=x+w;i+=linespace) {
     ggrid.moveTo(i,y)
     ggrid.lineTo(i,y+h)
   }
-  for (let j=y;j<=y+h;j+=yspace) {
+  for (let j=y;j<=y+h;j+=linespace) {
     ggrid.moveTo(x,  j)
     ggrid.lineTo(x+w,j)
   }
   ggrid.stroke()
+  ggrid.beginPath()
+  ggrid.moveTo(x,y+h+zero)
+  ggrid.lineTo(x+w,y+h+zero)
+  ggrid.stroke()
 }
-
-drawgrid(50,170,700,180,20,20)
-drawgrid(50,370,700,50,10,10)
-drawgrid(50,440,700,100,20,20)
-
-ggrid.fillStyle="green";
-ggrid.fillText("lag / lead (ms)",55,164)
-ggrid.fillStyle="cyan";
-ggrid.fillText("synctick",155,164)
-ggrid.fillStyle="blue";
-ggrid.fillText("buffer",55,364)
-ggrid.fillStyle="red";
-ggrid.fillText("ping (ms)",55,434)
-ggrid.fillText("rollback buffer",155,364)
-ggrid.fillStyle="orange";
-ggrid.fillText("framesync (ms)",105,434)
-
-ggrid.beginPath()
-ggrid.moveTo(50,260)
-ggrid.lineTo(750,260)
-ggrid.moveTo(50,420)
-ggrid.lineTo(750,420)
-ggrid.moveTo(50,540)
-ggrid.lineTo(750,540)
-ggrid.stroke()
-
-function newGraph(pos, col){
+function newGraph(name, col, y, h, zero, gridsize){
+  var pos = y+h +zero
   var lastY=0;
-  return function( y ){
+  if (gridsize) drawgrid(50,y,700,h,gridsize, zero)
+  ggrid.fillStyle=col
+  ggrid.fillText(name,gridsize?55:140,y-6)
+
+  return function( Y ){
     graph.strokeStyle=col
     graph.beginPath()
     graph.moveTo(needle,lastY +pos)
-    graph.lineTo(needle+1,y +pos)
+    graph.lineTo(needle+1,Y +pos)
     graph.stroke()
-    lastY=y
+    lastY=Y
   }
 }
 
 needle=50
-plotLead = newGraph(260,"green")
-plotSnTc = newGraph(260,"cyan")
-plotBuff = newGraph(420,"blue")
-plotRolb = newGraph(420,"red")
-plotPing = newGraph(540,"red")
-plotSync = newGraph(540,"orange")
+plotLead = newGraph("lag / lead (ms)", "green", 20, 180, -90, 20)
+plotBuff = newGraph("buffer", "blue", 220, 50, 0, 10)
+plotRolb = newGraph("rollback buffer", "red", 220, 50, 0)
+plotSnTc = newGraph("synctick", "teal", 290,40, 0, 20)
+plotPing = newGraph("ping (ms)", "black", 350, 140, 0, 20)
+plotSync = newGraph("framesync (ms)", "orange", 350,140,-20)
+
 function doStats(t){
   let lead = leadStack.length? avg(leadStack) : 0;
   let ping = pingStack.length? avg(pingStack) : 0;
 
   graph.clearRect(needle,0,4,600)
 
-  plotPing(-ping)
+  plotLead(lead)
   plotBuff(-yoInputs.length*5)
   plotRolb(-rollbackInputs.length*5)
-  plotLead(lead)
-  plotSync((t-nextFrame)*5)
   plotSnTc(synctick*3)
+  plotPing(-ping)
+  plotSync((t-nextFrame)*5)
 
   if (++needle>=750) needle=50
 
