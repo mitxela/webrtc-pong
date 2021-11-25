@@ -38,7 +38,7 @@ Buffer Size: <select name=bufsize id=bufsize>
 <pre id=debuglog></pre>
 
 <div id=box4 style='display:none'>
- <canvas id=game style="outline:1px solid;touch-action:pan-x pinch-zoom" width=800 height=600></canvas>
+ <canvas id=game style="outline:1px solid;" width=800 height=600></canvas>
  <br><label><input type=checkbox id=showstats oninput="showstats=this.checked;statsbox.style.display=showstats?'block':'none'"> Show stats</label>
  <div id=statsbox style="position:relative">
   <pre id=stats style="display:inline-block;width:200px"></pre><br>
@@ -456,12 +456,14 @@ canvas.onmousedown=function(e){
 
 touches=[];
 canvas.ontouchstart=function(e){
+  e.preventDefault()
   for (var i =e.changedTouches.length;i--;){
     var t={sy:e.changedTouches[i].pageY}
     touches[e.changedTouches[i].identifier]=t;
   }
 }
 canvas.ontouchmove=function(e){
+  e.preventDefault()
   for (var i=e.changedTouches.length;i--;){
      var t=touches[e.changedTouches[i].identifier];
      grabY += (e.changedTouches[i].pageY - t.sy)
