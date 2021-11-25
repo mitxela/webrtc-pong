@@ -95,7 +95,7 @@ grabY = 0; //mouse input
 scoreLeft=0
 scoreRight=0
 
-ball={x:0,y:0,speed:0,hspeed:0,vspeed:0}
+ball={x:0,y:-20,speed:0,hspeed:0,vspeed:0}
 
 function objcopy(o){
   let copy = {}
@@ -119,26 +119,22 @@ function loadRollbackState(){
 
 // Animation frame FPS could be different at each end, so don't rely on it for any timing.
 draw=function(t){
-  animFrameRateCount+=(t-lastAnimationFrame);
-  if (++animFrameRateSample >= 18) {
-    animFrameRate = 18*1000/animFrameRateCount
-    animFrameRateCount=0
-    animFrameRateSample=0
-  }
-
-  lastAnimationFrame=t
-
   ctx.clearRect( 0,0,w,h)
-  ctx.fillRect( left.x - paddleW/2, left.y - paddleH/2, paddleW, paddleH)
-  ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
-  ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
 
-  for (let i=13;i<h;i+=27) ctx.fillRect( w/2-5,i, 10,10)
-  drawScore(w/2-45,scoreLeft,1)
-  drawScore(w/2+55,scoreRight)
-
+  if (frameNumber<88) {
+    for (let i=0;i<frameNumber/8;i++) ctx.fillRect( w/2-5,13+i*27, 10,10),ctx.fillRect( w/2-5,580-i*27, 10,10)
+  } else {
+    ctx.fillRect( left.x - paddleW/2, left.y - paddleH/2, paddleW, paddleH)
+    ctx.fillRect( right.x - paddleW/2, right.y - paddleH/2, paddleW, paddleH)
+    ctx.fillRect( ball.x-ballSize/2,ball.y-ballSize/2, ballSize, ballSize )
+    for (let i=13;i<h;i+=27) ctx.fillRect( w/2-5,i, 10,10)
+    drawScore(w/2-45,scoreLeft,1)
+    drawScore(w/2+55,scoreRight)
+  }
   if (showstats) doStats(t)
+
   if (connected) requestAnimationFrame(draw)
+  lastAnimationFrame=t
 }
 ctx.fillStyle='#e8e8e8'
 var font=new Image();
@@ -202,8 +198,8 @@ setup = {
   },
   onclose: function(){
     connected=false;
-    debuglog.innerHTML = '[ disconnected ]'
-    debuglog.style.display='block';
+    debuglog.innerHTML = '[ disconnected &mdash; refresh to play again ]'
+    debuglog.style.display='inline-block';
 
   },
   onmessage:function(e) {
@@ -363,7 +359,7 @@ function processGameLogic(myInput,yoInput){
 
   // calculate ball and stuff
 
-  if (frameNumber==0) resetBall();
+  if (frameNumber==102) resetBall();
 
   let impulses = Math.ceil(ball.speed), step=1/impulses;
   for (let i=0;i<impulses;i++) {
@@ -516,6 +512,13 @@ plotPing = newGraph("ping (ms)", "white", 350, 140, 0, 20)
 plotSync = newGraph("framesync (ms)", "orange", 350,140,-20)
 
 function doStats(t){
+  animFrameRateCount+=(t-lastAnimationFrame);
+  if (++animFrameRateSample >= 18) {
+    animFrameRate = 18*1000/animFrameRateCount
+    animFrameRateCount=0
+    animFrameRateSample=0
+  }
+
   let lead = leadStack.length? avg(leadStack) : 0;
   let ping = pingStack.length? avg(pingStack) : 0;
 
