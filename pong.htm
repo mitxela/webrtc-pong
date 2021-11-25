@@ -1,5 +1,8 @@
 <!doctype html>
 <meta charset="utf-8">
+<meta name=viewport content="width=device-width, initial-scale=1.0">
+
+<style>canvas{max-width:100%;touch-action:pan-x pinch-zoom}</style>
 
 <div id=box1>
 <button id="createBtn">Create Game</button><p>
@@ -78,6 +81,7 @@ rollbackState={}
 rollbackInputs=[]
 yoInputLastDir=0;
 
+scaleFactor=1
 paddleH=60
 paddleW=20
 ballSize=20
@@ -317,7 +321,7 @@ function processFrame(){
   processGameLogic(myInput,yoInput)
 
   // take input and add to stack
-  myinput = { frame:frameNumber, dir:grabY }
+  myinput = { frame:frameNumber, dir:grabY*scaleFactor }
   grabY = 0;
   myInputs.push( myinput )
 
@@ -450,14 +454,12 @@ canvas.onmousedown=function(e){
 
 touches=[];
 canvas.ontouchstart=function(e){
-  e.preventDefault();
   for (var i =e.changedTouches.length;i--;){
     var t={sy:e.changedTouches[i].pageY}
     touches[e.changedTouches[i].identifier]=t;
   }
 }
 canvas.ontouchmove=function(e){
-  e.preventDefault();
   for (var i=e.changedTouches.length;i--;){
      var t=touches[e.changedTouches[i].identifier];
      grabY += (e.changedTouches[i].pageY - t.sy)
@@ -465,6 +467,7 @@ canvas.ontouchmove=function(e){
   }
 }
 
+window.onload=window.onresize=function(){scaleFactor=Math.max(1,w/(window.innerWidth-16))}
 
 ggrid.strokeStyle="rgba(0,0,0,0.2)"
 function drawgrid(x,y,w,h,xspace,yspace){
