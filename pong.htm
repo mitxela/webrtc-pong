@@ -350,14 +350,13 @@ function processFrame(){
 }
 
 function processGameLogic(myInput,yoInput){
-  let oldlefty=left.y, oldrighty=right.y
+  left.oldy=left.y //only used here, doesn't need to be part of rollback state
+  right.oldy=right.y
 
   if (host) { processPlayer(left, myInput); processPlayer(right, yoInput); }
   else      { processPlayer(left, yoInput); processPlayer(right, myInput); }
 
-  // calculate ball and stuff
-
-  if (myInput.frame==102) resetBall();
+  if (myInput.frame==102) resetBall(); //end of intro animation
 
   let impulses = Math.ceil(ball.speed), step=1/impulses;
   for (let i=0;i<impulses;i++) {
@@ -385,22 +384,34 @@ function processGameLogic(myInput,yoInput){
       ball.vspeed = Math.sin(angle)*ball.speed
       ball.x--
     }
-    else if (ball.x+ballSize/2 < left.x+paddleW/2-1 && vcollision(left)) {
-      ball.vspeed = -ball.vspeed
-      if (ball.y<oldlefty) ball.y=left.y-paddleH/2-ballSize/2;
-      else ball.y=left.y+paddleH/2+ballSize/2;
+    else if (ball.x-ballSize/2 < left.x+paddleW/2-1 && vcollision(left)) {
+      edgeCollision(left)
     }
-    else if (ball.x+ballSize/2 > right.x+paddleW/2-1 && vcollision(right)) {
-      ball.vspeed = -ball.vspeed
-      if (ball.y<oldrighty) ball.y=right.y-paddleH/2-ballSize/2;
-      else ball.y=right.y+paddleH/2+ballSize/2;
+    else if (ball.x+ballSize/2 > right.x-paddleW/2+1 && vcollision(right)) {
+      edgeCollision(right)
     }
   }
 
   if (ball.x<-ballSize) scoreRight++,resetBall()
   if (ball.x>w+ballSize) scoreLeft++,resetBall()
 }
+function edgeCollision(p){
+  //if paddle moving faster than ball vspeed, send to front
+  // else go by position
 
+  if      (ball.vspeed > 0 && p.y-p.oldy > ball.vspeed) {console.log(frameNumber,'fast col',ball.vspeed,p.y-p.oldy);reflectBottom(p);}
+  else if (ball.vspeed < 0 && p.y-p.oldy < ball.vspeed) {console.log(frameNumber,'fast col',ball.vspeed,p.y-p.oldy);reflectTop(p);}
+  else if (ball.y < (p.oldy + p.y)/2) {console.log(frameNumber,'slow col',ball.vspeed,p.y-p.oldy);reflectTop(p);}
+  else {console.log(frameNumber,'slow col',ball.vspeed,p.y-p.oldy);reflectBottom(p);}
+}
+function reflectBottom(p) {
+  ball.y=p.y+paddleH/2+ballSize/2+1;
+  if (ball.vspeed<0) ball.vspeed = -ball.vspeed;
+}
+function reflectTop(p) {
+  ball.y=p.y-paddleH/2-ballSize/2-1;
+  if (ball.vspeed>0) ball.vspeed = -ball.vspeed;
+}
 function processPlayer(p, input){
   p.y += input.dir;
   if (p.y > h-edgeGuard) p.y = h-edgeGuard;
