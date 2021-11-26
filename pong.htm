@@ -360,7 +360,7 @@ function processGameLogic(myInput,yoInput){
 
   // calculate ball and stuff
 
-  if (frameNumber==102) resetBall();
+  if (myInput.frame==102) resetBall();
 
   let impulses = Math.ceil(ball.speed), step=1/impulses;
   for (let i=0;i<impulses;i++) {
@@ -536,7 +536,7 @@ function doStats(t){
   plotRolb(-rollbackInputs.length*5)
   plotSnTc(synctick*3)
   plotPing(-ping)
-  plotSync((t-nextFrame)*5)
+  plotSync(Math.min(20,(t-nextFrame)*5))
 
   if (++needle>=750) needle=50
 
