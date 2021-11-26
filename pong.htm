@@ -355,9 +355,7 @@ function processGameLogic(myInput,yoInput){
   if (host) { processPlayer(left, myInput); processPlayer(right, yoInput); }
   else      { processPlayer(left, yoInput); processPlayer(right, myInput); }
 
-  // calculate ball and stuff
-
-  if (myInput.frame==102) resetBall();
+  if (myInput.frame==102) resetBall(); //end of intro animation
 
   let impulses = Math.ceil(ball.speed), step=1/impulses;
   for (let i=0;i<impulses;i++) {
@@ -385,12 +383,12 @@ function processGameLogic(myInput,yoInput){
       ball.vspeed = Math.sin(angle)*ball.speed
       ball.x--
     }
-    else if (ball.x+ballSize/2 < left.x+paddleW/2-1 && vcollision(left)) {
+    else if (ball.x-ballSize/2 < left.x+paddleW/2-1 && vcollision(left)) {
       ball.vspeed = -ball.vspeed
       if (ball.y<oldlefty) ball.y=left.y-paddleH/2-ballSize/2;
       else ball.y=left.y+paddleH/2+ballSize/2;
     }
-    else if (ball.x+ballSize/2 > right.x+paddleW/2-1 && vcollision(right)) {
+    else if (ball.x+ballSize/2 > right.x-paddleW/2+1 && vcollision(right)) {
       ball.vspeed = -ball.vspeed
       if (ball.y<oldrighty) ball.y=right.y-paddleH/2-ballSize/2;
       else ball.y=right.y+paddleH/2+ballSize/2;
