@@ -223,7 +223,7 @@ setup = {
           pingStack.shift() // The first is usually unrepresentative, throw away
           let halftrip = avg(pingStack)/2
 
-          bufferSize = (bufsize.value=="Auto") ? Math.ceil(halftrip/frameLength)+1 : Number(bufsize.value);
+          bufferSize = (bufsize.value=="Auto") ? Math.min(5,Math.ceil(halftrip/frameLength)) : Number(bufsize.value);
           initBuffer()
 
           send({type:"ACK", seed, bufferSize})
@@ -476,6 +476,7 @@ window.onload=window.onresize=function(){
 
 
 ///// stats /////
+rateAveragingPeriod=6;
 
 animFrameRate=0;
 animFrameRateSample=0;
@@ -528,15 +529,15 @@ plotSync = newGraph("framesync (ms)", "orange", 350,140,-20)
 
 function doStats(t){
   animFrameRateCount+=(t-lastAnimationFrame);
-  if (++animFrameRateSample >= 18) {
-    animFrameRate = 18*1000/animFrameRateCount
+  if (++animFrameRateSample >= rateAveragingPeriod) {
+    animFrameRate = rateAveragingPeriod*1000/animFrameRateCount
     animFrameRateCount=0
     animFrameRateSample=0
-  }
-  if (frameNumber-gameFrameSample >=5) {
-    gameFrameRate = 5*1000/(nextFrame-gameFrameCount)
-    gameFrameCount = nextFrame
-    gameFrameSample = frameNumber
+    if (nextFrame>gameFrameCount) {
+      gameFrameRate = (frameNumber-gameFrameSample)*1000/(nextFrame-gameFrameCount)
+      gameFrameCount = nextFrame
+      gameFrameSample = frameNumber
+    }
   }
 
   let lead = leadStack.length? avg(leadStack) : 0;
