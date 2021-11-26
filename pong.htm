@@ -72,9 +72,6 @@ stacksize=5 // averaging period for ping/lead times
 frameLength = 1000/60 //1000/FPS target
 nextFrame=0
 lastAnimationFrame=0;
-animFrameRate=0; // measured animation frame rate, not target
-animFrameRateSample=0;
-animFrameRateCount=0;
 synctick=0;
 
 
@@ -139,7 +136,7 @@ draw=function(t){
 }
 ctx.fillStyle='#e8e8e8'
 var font=new Image();
-font.src="data:image/gif;base64,R0lGODlhHgAFAIAB"+btoa([0,0xe8,0xe8,0xe8,0xff,0xff].reduce((a,b)=>a+String.fromCharCode(b),""))+"/yH5BAEAAAEALAAAAAAeAAUAAAIdhANom+x/WphJWTRp23h7WIEdloUaGWnpozItVQAAOw==";
+font.src="data:image/gif;base64,R0lGODlhHgAFAIAB"+btoa("\0\xe8\xe8\xe8\xff\xff")+"/yH5BAEAAAEALAAAAAAeAAUAAAIdhANom+x/WphJWTRp23h7WIEdloUaGWnpozItVQAAOw==";
 
 function drawScore(x,score,alignRight){
   let t=score.toString(), offset=alignRight?t.length*40:0;
@@ -476,6 +473,18 @@ window.onload=window.onresize=function(){
   scaleFactor=Math.max(1,w/(window.innerWidth-16),h/(window.innerHeight*0.98))
 }
 
+
+
+///// stats /////
+
+animFrameRate=0;
+animFrameRateSample=0;
+animFrameRateCount=0;
+gameFrameRate=0;
+gameFrameSample=0;
+gameFrameCount=0;
+needle=50;
+
 ggrid.strokeStyle="rgba(255,255,255,0.2)"
 function drawgrid(x,y,w,h,linespace,zero){
   ggrid.beginPath()
@@ -510,7 +519,6 @@ function newGraph(name, col, y, h, zero, gridsize){
   }
 }
 
-needle=50
 plotLead = newGraph("lag / lead (ms)", "green", 20, 180, -90, 20)
 plotBuff = newGraph("buffer", "cyan", 220, 50, 0, 10)
 plotRolb = newGraph("rollback buffer", "red", 220, 50, 0)
@@ -524,6 +532,11 @@ function doStats(t){
     animFrameRate = 18*1000/animFrameRateCount
     animFrameRateCount=0
     animFrameRateSample=0
+  }
+  if (frameNumber-gameFrameSample >=5) {
+    gameFrameRate = 5*1000/(nextFrame-gameFrameCount)
+    gameFrameCount = nextFrame
+    gameFrameSample = frameNumber
   }
 
   let lead = leadStack.length? avg(leadStack) : 0;
@@ -540,13 +553,14 @@ function doStats(t){
 
   if (++needle>=750) needle=50
 
-
   let p="ping: " +ping.toFixed(3) + "ms\n"
        +"lead: " +lead.toFixed(3) + "ms\n"
-       +"buffer: "+"\u25ae".repeat(yoInputs.length);
-  if (yoInputs.length<bufferSize) p+="\u25af".repeat(bufferSize-yoInputs.length)
-  p+= "\nframesync: "+(nextFrame-t).toFixed(3)+"ms\n"
-  p+= "Display FPS: "+animFrameRate.toFixed(3)
+       +"framesync: "+(nextFrame-t).toFixed(3)+"ms\n"
+       +"Display FPS: "+animFrameRate.toFixed(3)
+       +"\nGame FPS: "+gameFrameRate.toFixed(3)
+       +"\nbuffer: "+"\u25a0 ".repeat(yoInputs.length);
+  if (yoInputs.length<bufferSize) p+="\u25a1 ".repeat(bufferSize-yoInputs.length)
+  p+= "\nrollback buffer: "+ (rollbackInputs.length?"\u25a0 ".repeat(rollbackInputs.length):"");
   document.getElementById("stats").innerHTML = p
 }
 
