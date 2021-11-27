@@ -19,8 +19,8 @@ Enter ID: <input id="conid" size=8>
 </form>
 
 <div id=box3 style='display:none'>
-<h3>ID: </h3>
-Buffer Size: <select name=bufsize id=bufsize>
+<h2>ID: </h2>
+Buffer Size: <select id=bufsize>
  <option value=Auto>Auto</option>
  <option value=1>1</option>
  <option value=2>2</option>
@@ -32,7 +32,8 @@ Buffer Size: <select name=bufsize id=bufsize>
  <option value=8>8</option>
  <option value=9>9</option>
  <option value=10>10</option>
-</select>
+</select><p>
+Difficulty: <span id=bspl></span><br><input id=ballspeed type=range min=2 max=20 value=8 oninput='bspl.textContent=this.value+" [ "+ ["boring","normal","crazy"][Math.floor(this.value/7)]+" ]"'>
 </div>
 
 <pre id=debuglog></pre>
@@ -59,6 +60,7 @@ graph=document.getElementById("graph").getContext("2d")
 ggrid=document.getElementById("ggrid").getContext("2d")
 showstats=document.getElementById("showstats").checked;
 statsbox.style.display=showstats?'block':'none';
+ballspeed.oninput()
 
 host=false;
 connected=false;
@@ -93,6 +95,7 @@ grabY = 0; //mouse input
 scoreLeft=0
 scoreRight=0
 
+ballStartSpeed=4;
 ball={x:0,y:-20,speed:0,hspeed:0,vspeed:0}
 
 function objcopy(o){
@@ -161,7 +164,7 @@ function resetBall(){
 
   ball.x=w/2
   ball.y=h/2
-  ball.speed=4
+  ball.speed=ballStartSpeed
   ball.hspeed = Math.cos(angle)*ball.speed
   ball.vspeed = Math.sin(angle)*ball.speed
 }
@@ -225,8 +228,9 @@ setup = {
 
           bufferSize = (bufsize.value=="Auto") ? Math.min(5,Math.ceil(halftrip/frameLength)) : Number(bufsize.value);
           initBuffer()
+          ballStartSpeed = Number(ballspeed.value)
 
-          send({type:"ACK", seed, bufferSize})
+          send({type:"ACK", seed, bufferSize, ballStartSpeed})
 
           // wait for half the roundtrip time before starting the first frame
           nextFrame = performance.now() + halftrip
@@ -236,6 +240,7 @@ setup = {
       case "ACK":
         seed=data.seed
         bufferSize = data.bufferSize
+        ballStartSpeed = data.ballStartSpeed
         nextFrame = performance.now()
         initBuffer()
         processFrame()
@@ -412,7 +417,7 @@ function vcollision(p){
 createBtn.onclick = function() {
   box3.style.display='block'
   box1.style.display='none'
-  document.querySelector('#box3 h3').innerHTML = 'ID: '+ DC.host( setup );
+  document.querySelector('#box3 h2').innerHTML = 'ID: '+ DC.host( setup );
   host=true;
 }
 
