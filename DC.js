@@ -3,23 +3,16 @@ const DC={id:null, dc:null, me:null, you:null};
 (function(){
   URL='rtc-signal.php';
 
-  let oldIdInUse=0, oldId = window.location.hash.match(/^#([1-9]\d{2})$/);
+  let newId=0, oldId = window.location.hash.match(/^#([1-9]\d{2})$/);
   if (oldId) {
     DC.id = oldId[1];
-    post("id="+DC.id, n=> oldIdInUse=n )
+    post("id="+DC.id, n=> newId=n )
   }
 
   DC.log=function(...e) {
     console.log(...e)
     e[1]=JSON.stringify(e[1])
     document.getElementById("debuglog").innerHTML += e.join(" ")+"\n"
-  }
-
-  function chooseID(){
-    let len = 3;
-    let max=Math.pow(10,len)-1;
-    let min=Math.pow(10,len-1);
-    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
   var cfg  = {
@@ -93,7 +86,7 @@ const DC={id:null, dc:null, me:null, you:null};
   DC.host = function( setup ) {
     DC.me='bob';
     DC.you='alice';
-    if (!DC.id || oldIdInUse) DC.id = chooseID();
+    if (newId) DC.id = newId;
 
     init()
     DC.dc = pc.createDataChannel('test')
