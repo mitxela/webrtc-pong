@@ -1,9 +1,9 @@
 const DC={id:null, dc:null, me:null, you:null};
 
 (function(){
-  URL='rtc-signal.php';
+  URL='signal.php';
 
-  let oldId = window.location.hash.match(/^#([1-9]\d{2})$/);
+  let oldId = window.location.hash.match(/^#([1-9]\d{3})$/);
   if (oldId) DC.id = oldId[1];
 
   DC.log=function(...e) {

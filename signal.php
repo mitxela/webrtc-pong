@@ -1,11 +1,11 @@
 <?php
-$id_length=3;
-$table='rtcSignal2';
+$id_length=4;
+$table='rtcPong';
 header("Content-Type: text/html; charset=utf-8");
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
-require('../db.php'); //$db = mysqli_connect(...);
+require('db.php'); //$db = mysqli_connect(...);
 
 if (preg_match('/^[1-9]\d{'.($id_length-1).'}$/',$_POST['id'])) $id=$_POST['id'];
 else die();
@@ -18,7 +18,7 @@ if ($_POST['to']=='alice') {
   $me='alice';
 } else {
   // Prune old entries
-  $db->query("DELETE FROM `$table` WHERE `timestamp` < (NOW() - INTERVAL 10 MINUTE)");
+  $db->query("DELETE FROM `$table` WHERE `timestamp` < (NOW() - INTERVAL 3 MINUTE)");
 
   // report if ID in use
   if ($db->query("SELECT * FROM `$table` WHERE `id`='$id'")->num_rows) {
