@@ -415,9 +415,11 @@ function vcollision(p){
 }
 
 createBtn.onclick = function() {
+  DC.host( setup, id=> {
+    document.querySelector('#box3 h2').innerHTML = 'ID: '+ id
+  });
   box3.style.display='block'
   box1.style.display='none'
-  document.querySelector('#box3 h2').innerHTML = 'ID: '+ DC.host( setup );
   host=true;
 }
 

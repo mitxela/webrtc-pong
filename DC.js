@@ -3,11 +3,8 @@ const DC={id:null, dc:null, me:null, you:null};
 (function(){
   URL='rtc-signal.php';
 
-  let newId=0, oldId = window.location.hash.match(/^#([1-9]\d{2})$/);
-  if (oldId) {
-    DC.id = oldId[1];
-    post("id="+DC.id, n=> newId=n )
-  }
+  let oldId = window.location.hash.match(/^#([1-9]\d{2})$/);
+  if (oldId) DC.id = oldId[1];
 
   DC.log=function(...e) {
     console.log(...e)
@@ -83,17 +80,19 @@ const DC={id:null, dc:null, me:null, you:null};
     }).catch(DC.log);
   }
 
-  DC.host = function( setup ) {
-    DC.me='bob';
-    DC.you='alice';
-    if (newId) DC.id = newId;
+  DC.host = function( setup, ready ) {
+     DC.me='bob';
+     DC.you='alice';
+     post("id="+DC.id, newId=> {
+      if (newId) DC.id = newId;
 
-    init()
-    DC.dc = pc.createDataChannel('test')
-    Object.assign(DC.dc, setup)
-    pc.createOffer().then(createdDesc).catch(DC.log)
+      init()
+      DC.dc = pc.createDataChannel('test')
+      Object.assign(DC.dc, setup)
+      pc.createOffer().then(createdDesc).catch(DC.log)
 
-    return DC.id;
+      ready(DC.id);
+    })
   };
 
   DC.join = function( joinid, setup ){
