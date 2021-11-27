@@ -8,7 +8,6 @@ header("Pragma: no-cache");
 require('db.php'); //$db = mysqli_connect(...);
 
 if (preg_match('/^[1-9]\d{'.($id_length-1).'}$/',$_POST['id'])) $id=$_POST['id'];
-else die();
 
 if ($_POST['to']=='alice') {
   $you='alice';
@@ -20,8 +19,8 @@ if ($_POST['to']=='alice') {
   // Prune old entries
   $db->query("DELETE FROM `$table` WHERE `timestamp` < (NOW() - INTERVAL 3 MINUTE)");
 
-  // report if ID in use
-  if ($db->query("SELECT * FROM `$table` WHERE `id`='$id'")->num_rows) {
+  // check ID valid and not in use
+  if (!$id || $db->query("SELECT * FROM `$table` WHERE `id`='$id'")->num_rows) {
     // choose a valid fresh one
     do {
       $id = rand(pow(10,$id_length-1),pow(10,$id_length)-1);
@@ -31,6 +30,7 @@ if ($_POST['to']=='alice') {
   }
   die("0");
 }
+if (!$id) die();
 
 if ($_POST['msg']) {
   $db->query("INSERT INTO `$table` (`id`, `to`, `timestamp`, `msg`) VALUES ('$id', '$you', NOW(), '".$db->escape_string($_POST['msg'])."')");
