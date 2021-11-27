@@ -3,8 +3,11 @@ const DC={id:null, dc:null, me:null, you:null};
 (function(){
   URL='rtc-signal.php';
 
-  let oldid = window.location.hash.match(/^#([1-9]\d{2})$/);
-  if (oldid) DC.id = oldid[1];
+  let oldIdInUse=0, oldId = window.location.hash.match(/^#([1-9]\d{2})$/);
+  if (oldId) {
+    DC.id = oldId[1];
+    post("id="+DC.id, n=> oldIdInUse=n )
+  }
 
   DC.log=function(...e) {
     console.log(...e)
@@ -90,7 +93,7 @@ const DC={id:null, dc:null, me:null, you:null};
   DC.host = function( setup ) {
     DC.me='bob';
     DC.you='alice';
-    if (!DC.id) DC.id = chooseID();
+    if (!DC.id || oldIdInUse) DC.id = chooseID();
 
     init()
     DC.dc = pc.createDataChannel('test')

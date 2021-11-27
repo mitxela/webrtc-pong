@@ -17,11 +17,15 @@ if ($_POST['to']=='alice') {
 } else if ($_POST['to']=='bob') {
   $you='bob';
   $me='alice';
+} else {
+  // Prune old entries
+  $db->query("DELETE FROM `$table` WHERE `timestamp` < (NOW() - INTERVAL 10 MINUTE)");
+
+  // report if ID in use
+  die("".$db->query("SELECT * FROM `$table` WHERE `id`='$id'")->num_rows);
 }
 
 if ($me) {
-  // Prune old entries
-  $db->query("DELETE FROM `$table` WHERE `timestamp` < (NOW() - INTERVAL 10 MINUTE)");
 
   if ($_POST['msg']) {
     $db->query("INSERT INTO `$table` (`id`, `to`, `timestamp`, `msg`) VALUES ('$id', '$you', NOW(), '".$db->escape_string($_POST['msg'])."')");
