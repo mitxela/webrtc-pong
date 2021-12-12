@@ -75,7 +75,7 @@ document.querySelectorAll('h1 span').forEach(a=>a.style.animationDelay=2*Math.ra
 canvas=document.getElementById("game")
 ctx=canvas.getContext("2d")
 ctx.imageSmoothingEnabled=false;
-ctx.shadowColor='#777'
+ctx.shadowColor='#e8e8e8'
 ctx.shadowBlur=8;
 w=canvas.width;h=canvas.height
 
@@ -100,6 +100,7 @@ nextFrame=0
 lastAnimationFrame=0;
 synctick=0;
 
+version=1 // increment whenever the game logic changes
 
 myInputs=[]
 yoInputs=[]
@@ -217,8 +218,8 @@ setup = {
     box3.style.display='none';
     box4.style.display='block';
 
-    if (host) {
-      send({type:"SYN"})
+    if (!host) {
+      send({type:"version", version})
     }
   },
   onclose: function(){
@@ -240,6 +241,13 @@ setup = {
     }
 
     if (data.type) switch (data.type) {
+      case "version":
+        if (data.version != version) {
+          if (host) send({type:"version", version}) //force the other player to also throw this error
+          alert("Version mismatch! Please refresh the page and try again")
+          DC.dc.close()
+        } else send({type:"SYN"})
+        break;
       case "SYN":
         send({type:"SYNACK"})
         break;
