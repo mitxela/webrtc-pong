@@ -6,12 +6,31 @@
 canvas{max-width:100%;max-height:98vh}
 body{text-align:center;color:#e8e8e8;background:#131313}
 pre{text-align:left}
+a{color:#e8e8e8}
+a:hover{color:red}
+
+@keyframes flicker{
+  0% {opacity:0}
+  59%{opacity:0}
+  60%{opacity:1}
+  79%{opacity:1}
+  80%{opacity:0}
+  99%{opacity:0}
+ 100%{opacity:1}
+}
+h1 span{animation: flicker 0.5s linear both;}
+@keyframes fade{
+  0% {opacity:0}
+ 100%{opacity:1}
+}
+#box1 p{animation: fade 2s linear 2s both;}
 </style>
 
 <div id=box1>
-<h1>WebRTC Pong</h1>
-<button id="createBtn">Create Game</button><p>
-<button id="joinBtn1">Join Game</button>
+<h1><span>W</span><span>e</span><span>b</span><span>R</span><span>T</span><span>C</span> <span>P</span><span>o</span><span>n</span><span>g</span></h1>
+<p><button id="createBtn">Create Game</button>
+<p><button id="joinBtn1">Join Game</button>
+<p><a href=/projects/webrtc-pong>about</a> &bull; <a href=https://github.com/mitxela/webrtc-pong>source code</a>
 </div>
 
 <form id=box2 style='display:none;padding:20px;'>
@@ -51,6 +70,8 @@ Difficulty: <span id=bspl></span><br><input id=ballspeed type=range min=2 max=20
 
 <script src=DC.js></script>
 <script>
+document.querySelectorAll('h1 span').forEach(a=>a.style.animationDelay=2*Math.random()+'s')
+
 canvas=document.getElementById("game")
 ctx=canvas.getContext("2d")
 ctx.imageSmoothingEnabled=false;
