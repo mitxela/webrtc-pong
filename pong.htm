@@ -75,6 +75,8 @@ document.querySelectorAll('h1 span').forEach(a=>a.style.animationDelay=2*Math.ra
 canvas=document.getElementById("game")
 ctx=canvas.getContext("2d")
 ctx.imageSmoothingEnabled=false;
+ctx.shadowColor='#777'
+ctx.shadowBlur=8;
 w=canvas.width;h=canvas.height
 
 viewport = document.querySelector('meta[name="viewport"]');
