@@ -1,16 +1,10 @@
-const DC={id:null, dc:null, me:null, you:null};
+const DC={id:null, dc:null, me:null, you:null, log:function(){}};
 
 (function(){
   URL='signal.php';
 
   let oldId = window.location.hash.match(/^#([1-9]\d{3})$/);
   if (oldId) DC.id = oldId[1];
-
-  DC.log=function(...e) {
-    console.log(...e)
-    e[1]=JSON.stringify(e[1])
-    document.getElementById("debuglog").innerHTML += e.join(" ")+"\n"
-  }
 
   var cfg  = {
     'iceServers': [
