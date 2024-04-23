@@ -7,12 +7,13 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 require('db.php'); //$db = mysqli_connect(...);
 
-if (preg_match('/^[1-9]\d{'.($id_length-1).'}$/',$_POST['id'])) $id=$_POST['id'];
+$id = null;
+if (isset($_POST['id']) && preg_match('/^[1-9]\d{'.($id_length-1).'}$/',$_POST['id'])) $id=$_POST['id'];
 
-if ($_POST['to']=='alice') {
+if (isset($_POST['to']) && $_POST['to']=='alice') {
   $you='alice';
   $me='bob';
-} else if ($_POST['to']=='bob') {
+} else if (isset($_POST['to']) && $_POST['to']=='bob') {
   $you='bob';
   $me='alice';
 } else {
@@ -32,7 +33,7 @@ if ($_POST['to']=='alice') {
 }
 if (!$id) die();
 
-if ($_POST['msg']) {
+if (isset($_POST['msg']) && $_POST['msg']) {
   $db->query("INSERT INTO `$table` (`id`, `to`, `timestamp`, `msg`) VALUES ('$id', '$you', NOW(), '".$db->escape_string($_POST['msg'])."')");
 }
 
